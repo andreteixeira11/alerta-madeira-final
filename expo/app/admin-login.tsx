@@ -4,10 +4,12 @@ import {
   Platform, ScrollView, Alert, Animated, ActivityIndicator,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
+import { useMutation } from '@tanstack/react-query';
 import { ShieldCheck, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
 import { supabase } from '@/lib/supabase';
+import { normalizeEmail, signInWithRetry } from '@/utils/auth';
 import * as Haptics from 'expo-haptics';
 
 export default function AdminLoginScreen() {
@@ -15,37 +17,17 @@ export default function AdminLoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string>('');
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
-  const shake = useCallback(() => {
-    Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
-    ]).start();
-  }, [shakeAnim]);
-
-  const handleAdminLogin = useCallback(async () => {
-    if (!email.trim() || !password.trim()) {
-      shake();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (error) throw error;
-
+  const adminLoginMutation = useMutation({
+    mutationFn: async ({ email: currentEmail, password: currentPassword }: { email: string; password: string }) => {
+      const data = await signInWithRetry(currentEmail, currentPassword);
       const userId = data.user?.id;
-      if (!userId) throw new Error('Utilizador não encontrado');
+
+      if (!userId) {
+        throw new Error('Utilizador não encontrado');
+      }
 
       const { data: userProfile, error: profileError } = await supabase
         .from('users')
@@ -60,22 +42,48 @@ export default function AdminLoginScreen() {
 
       if (userProfile?.role !== 'admin') {
         await supabase.auth.signOut();
-        shake();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Acesso Negado', 'Esta conta não tem permissões de administrador.');
-        return;
+        throw new Error('Esta conta não tem permissões de administrador.');
       }
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/admin' as any);
-    } catch (error: any) {
+      return data;
+    },
+  });
+
+  const shake = useCallback(() => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+    ]).start();
+  }, [shakeAnim]);
+
+  const handleAdminLogin = useCallback(async () => {
+    const normalizedEmail = normalizeEmail(email);
+
+    if (!normalizedEmail || !password.trim()) {
+      setStatusMessage('Preencha o email e a palavra-passe para continuar.');
       shake();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', translateError(error));
-    } finally {
-      setLoading(false);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
     }
-  }, [email, password, shake, router]);
+
+    setStatusMessage('A validar permissões de administrador...');
+
+    try {
+      await adminLoginMutation.mutateAsync({ email: normalizedEmail, password });
+      setStatusMessage('Acesso de administrador confirmado.');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace('/admin' as any);
+    } catch (error: unknown) {
+      const translatedError = translateError(error);
+      setStatusMessage(translatedError);
+      shake();
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Erro', translatedError);
+    }
+  }, [adminLoginMutation, email, password, router, shake]);
 
   return (
     <KeyboardAvoidingView
@@ -118,7 +126,12 @@ export default function AdminLoginScreen() {
                 placeholder="Email do administrador"
                 placeholderTextColor={Colors.textMuted}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (statusMessage) {
+                    setStatusMessage('');
+                  }
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -133,7 +146,12 @@ export default function AdminLoginScreen() {
                 placeholder="Palavra-passe"
                 placeholderTextColor={Colors.textMuted}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(value) => {
+                  setPassword(value);
+                  if (statusMessage) {
+                    setStatusMessage('');
+                  }
+                }}
                 secureTextEntry={!showPassword}
                 testID="admin-password"
               />
@@ -146,14 +164,22 @@ export default function AdminLoginScreen() {
               </TouchableOpacity>
             </View>
 
+            {!!statusMessage && (
+              <View style={styles.statusBanner} testID="admin-status-banner">
+                <Text style={styles.statusText}>{statusMessage}</Text>
+              </View>
+            )}
+
             <TouchableOpacity
-              style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
-              onPress={handleAdminLogin}
-              disabled={loading}
+              style={[styles.loginBtn, adminLoginMutation.isPending && styles.loginBtnDisabled]}
+              onPress={() => {
+                void handleAdminLogin();
+              }}
+              disabled={adminLoginMutation.isPending}
               activeOpacity={0.85}
               testID="admin-submit"
             >
-              {loading ? (
+              {adminLoginMutation.isPending ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
                 <>
@@ -273,6 +299,19 @@ const styles = StyleSheet.create({
   },
   eyeBtn: {
     padding: 4,
+  },
+  statusBanner: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  statusText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(255,255,255,0.8)',
   },
   loginBtn: {
     flexDirection: 'row',
