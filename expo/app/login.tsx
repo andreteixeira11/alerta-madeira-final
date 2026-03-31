@@ -17,20 +17,23 @@ const REMEMBER_PASS_KEY = 'remember_pass';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { loginMutation } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const { loginMutation, initializing } = useAuth();
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [statusMessage, setStatusMessage] = useState<string>('');
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
-    AsyncStorage.getItem(REMEMBER_KEY).then(saved => {
+    void AsyncStorage.getItem(REMEMBER_KEY).then((saved) => {
       if (saved) {
         setEmail(saved);
         setRememberMe(true);
-        AsyncStorage.getItem(REMEMBER_PASS_KEY).then(pass => {
-          if (pass) setPassword(pass);
+        void AsyncStorage.getItem(REMEMBER_PASS_KEY).then((pass) => {
+          if (pass) {
+            setPassword(pass);
+          }
         });
       }
     });
@@ -47,26 +50,34 @@ export default function LoginScreen() {
   }, [shakeAnim]);
 
   const handleLogin = useCallback(async () => {
-    if (!email.trim() || !password.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !password.trim()) {
+      setStatusMessage('Preencha o email e a palavra-passe para continuar.');
       shake();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
+    setStatusMessage('A validar acesso...');
+
     try {
-      await loginMutation.mutateAsync({ email: email.trim(), password });
+      await loginMutation.mutateAsync({ email: normalizedEmail, password });
       if (rememberMe) {
-        await AsyncStorage.setItem(REMEMBER_KEY, email.trim());
+        await AsyncStorage.setItem(REMEMBER_KEY, normalizedEmail);
         await AsyncStorage.setItem(REMEMBER_PASS_KEY, password);
       } else {
         await AsyncStorage.removeItem(REMEMBER_KEY);
         await AsyncStorage.removeItem(REMEMBER_PASS_KEY);
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
+      setStatusMessage('Login efetuado com sucesso.');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error: unknown) {
+      const translatedError = translateError(error);
+      setStatusMessage(translatedError);
       shake();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', translateError(error));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Erro', translatedError);
     }
   }, [email, password, rememberMe, loginMutation, shake]);
 
@@ -101,10 +112,18 @@ export default function LoginScreen() {
               placeholder="Email"
               placeholderTextColor={Colors.textMuted}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(value) => {
+                setEmail(value);
+                if (statusMessage) {
+                  setStatusMessage('');
+                }
+              }}
               keyboardType="email-address"
+              textContentType="username"
+              autoComplete="email"
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="next"
               testID="login-email"
             />
           </View>
@@ -116,8 +135,19 @@ export default function LoginScreen() {
               placeholder="Palavra-passe"
               placeholderTextColor={Colors.textMuted}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(value) => {
+                setPassword(value);
+                if (statusMessage) {
+                  setStatusMessage('');
+                }
+              }}
               secureTextEntry={!showPassword}
+              textContentType="password"
+              autoComplete="password"
+              returnKeyType="go"
+              onSubmitEditing={() => {
+                void handleLogin();
+              }}
               testID="login-password"
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
@@ -140,14 +170,22 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          {!!statusMessage && (
+            <View style={styles.statusBanner} testID="login-status-banner">
+              <Text style={styles.statusText}>{statusMessage}</Text>
+            </View>
+          )}
+
           <TouchableOpacity
-            style={[styles.loginBtn, loginMutation.isPending && styles.loginBtnDisabled]}
-            onPress={handleLogin}
-            disabled={loginMutation.isPending}
+            style={[styles.loginBtn, (loginMutation.isPending || initializing) && styles.loginBtnDisabled]}
+            onPress={() => {
+              void handleLogin();
+            }}
+            disabled={loginMutation.isPending || initializing}
             activeOpacity={0.85}
             testID="login-submit"
           >
-            {loginMutation.isPending ? (
+            {loginMutation.isPending || initializing ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.loginBtnText}>Entrar</Text>
@@ -288,6 +326,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.primary,
     fontWeight: '600' as const,
+  },
+  statusBanner: {
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  statusText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 18,
   },
   loginBtn: {
     backgroundColor: Colors.primary,

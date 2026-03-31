@@ -1,10 +1,93 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/types';
 import { Session } from '@supabase/supabase-js';
 import { translateError } from '@/utils/translateError';
+
+const NETWORK_ERROR_SNIPPETS = [
+  'network request failed',
+  'failed to fetch',
+  'fetch failed',
+  'networkerror',
+  'load failed',
+  'connection error',
+  'request timed out',
+  'timeout',
+] as const;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function isTransientAuthError(error: unknown): boolean {
+  const errorMessage = (error as { message?: unknown })?.message;
+  const message = typeof error === 'string'
+    ? error
+    : typeof errorMessage === 'string'
+      ? errorMessage
+      : '';
+
+  const normalizedMessage = message.toLowerCase();
+
+  return NETWORK_ERROR_SNIPPETS.some((snippet) => normalizedMessage.includes(snippet));
+}
+
+async function signInWithRetry(email: string, password: string) {
+  const normalizedEmail = normalizeEmail(email);
+
+  console.log('[Auth] Login attempt started for:', normalizedEmail);
+
+  const sessionResult = await supabase.auth.getSession();
+  const sessionErrorMessage = sessionResult.error?.message?.toLowerCase() ?? '';
+
+  if (
+    sessionErrorMessage.includes('refresh token') ||
+    sessionErrorMessage.includes('refresh_token') ||
+    sessionErrorMessage.includes('invalid_grant') ||
+    sessionErrorMessage.includes('token is expired')
+  ) {
+    console.log('[Auth] Clearing stale local session before login');
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  }
+
+  const firstAttempt = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  });
+
+  if (!firstAttempt.error) {
+    console.log('[Auth] Login attempt succeeded on first try');
+    return firstAttempt.data;
+  }
+
+  console.log('[Auth] Login first attempt failed:', firstAttempt.error.message);
+
+  if (!isTransientAuthError(firstAttempt.error)) {
+    throw new Error(translateError(firstAttempt.error));
+  }
+
+  console.log('[Auth] Retrying login after transient error');
+  await wait(1200);
+
+  const secondAttempt = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  });
+
+  if (secondAttempt.error) {
+    console.log('[Auth] Login retry failed:', secondAttempt.error.message);
+    throw new Error(translateError(secondAttempt.error));
+  }
+
+  console.log('[Auth] Login attempt succeeded on retry');
+  return secondAttempt.data;
+}
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -55,7 +138,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       }
       setSession(s);
       if (s) {
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
+        void queryClient.invalidateQueries({ queryKey: ['profile'] });
       }
     });
 
@@ -81,18 +164,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(translateError(error));
-      return data;
-    },
+    mutationFn: async ({ email, password }: { email: string; password: string }) => signInWithRetry(email, password),
   });
 
   const registerMutation = useMutation({
     mutationFn: async ({ email, password, username }: { email: string; password: string; username: string }) => {
       console.log('[Auth] Starting registration for:', email);
+      const normalizedEmail = normalizeEmail(email);
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: { data: { username } },
       });
@@ -108,7 +188,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       if (userId) {
         const { error: upsertError } = await supabase.from('users').upsert({
           id: userId,
-          email,
+          email: normalizedEmail,
           name: username,
           role: 'user',
         }, { onConflict: 'id' });
@@ -125,7 +205,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log('[Auth] No session after signUp, attempting signIn...');
       await new Promise(resolve => setTimeout(resolve, 500));
       const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
       if (loginError) {
@@ -139,7 +219,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email));
       if (error) throw new Error(translateError(error));
     },
   });
@@ -149,7 +229,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     queryClient.clear();
   }, [queryClient]);
 
-  return {
+  return useMemo(() => ({
     session,
     user: session?.user ?? null,
     profile: profileQuery.data ?? null,
@@ -161,5 +241,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     resetPasswordMutation,
     logout,
     refetchProfile: profileQuery.refetch,
-  };
+  }), [
+    session,
+    profileQuery.data,
+    profileQuery.refetch,
+    initializing,
+    loginMutation,
+    registerMutation,
+    resetPasswordMutation,
+    logout,
+  ]);
 });
