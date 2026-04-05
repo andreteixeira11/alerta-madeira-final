@@ -8,6 +8,7 @@ import { KeyRound, Mail, ArrowLeft } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
 import { trpc } from '@/lib/trpc';
+import { t } from '@/utils/i18n';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSendCode = useCallback(async () => {
     if (!email.trim()) {
-      Alert.alert('Erro', 'Insira o seu email');
+      Alert.alert(t('common.error'), t('auth.enterEmail'));
       return;
     }
     try {
@@ -30,7 +31,7 @@ export default function ForgotPasswordScreen() {
         params: { email: email.trim(), type: 'password_reset' },
       } as any);
     } catch (error: any) {
-      Alert.alert('Erro', translateError(error));
+      Alert.alert(t('common.error'), translateError(error));
     }
   }, [email, sendCodeMutation, router]);
 
@@ -49,15 +50,15 @@ export default function ForgotPasswordScreen() {
           <View style={styles.iconCircle}>
             <KeyRound size={28} color={Colors.white} />
           </View>
-          <Text style={styles.title}>Recuperar Senha</Text>
-          <Text style={styles.subtitle}>Enviaremos um código de verificação para o seu email</Text>
+          <Text style={styles.title}>{t('auth.forgotPasswordTitle')}</Text>
+          <Text style={styles.subtitle}>{t('auth.forgotPasswordSubtitle')}</Text>
         </View>
 
         <View style={styles.inputContainer}>
           <Mail size={18} color={Colors.textMuted} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder={t('auth.email')}
             placeholderTextColor={Colors.textMuted}
             value={email}
             onChangeText={setEmail}
@@ -78,7 +79,7 @@ export default function ForgotPasswordScreen() {
           {sendCodeMutation.isPending ? (
             <ActivityIndicator color={Colors.white} />
           ) : (
-            <Text style={styles.resetBtnText}>Enviar Código</Text>
+            <Text style={styles.resetBtnText}>{t('auth.sendCode')}</Text>
           )}
         </TouchableOpacity>
       </View>

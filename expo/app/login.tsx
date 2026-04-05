@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView,
-  Platform, ScrollView, Alert, Animated, ActivityIndicator,
+  Platform, ScrollView, Animated, ActivityIndicator,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, FileText, MessageCircle } from 'lucide-react-native';
@@ -11,6 +11,7 @@ import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { translateError } from '@/utils/translateError';
 import * as Haptics from 'expo-haptics';
+import { t } from '@/utils/i18n';
 
 const REMEMBER_KEY = 'remember_email';
 const REMEMBER_PASS_KEY = 'remember_pass';
@@ -53,13 +54,13 @@ export default function LoginScreen() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail || !password.trim()) {
-      setStatusMessage('Preencha o email e a palavra-passe para continuar.');
+      setStatusMessage(t('auth.fillEmailPassword'));
       shake();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    setStatusMessage('A validar acesso...');
+    setStatusMessage(t('auth.loginChecking'));
 
     try {
       await loginMutation.mutateAsync({ email: normalizedEmail, password });
@@ -70,14 +71,14 @@ export default function LoginScreen() {
         await AsyncStorage.removeItem(REMEMBER_KEY);
         await AsyncStorage.removeItem(REMEMBER_PASS_KEY);
       }
-      setStatusMessage('Login efetuado com sucesso.');
+      setStatusMessage(t('auth.loginSuccess'));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: unknown) {
       const translatedError = translateError(error);
       setStatusMessage(translatedError);
       shake();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', translatedError);
+      console.log('[Login] Sign in error shown in banner:', translatedError);
     }
   }, [email, password, rememberMe, loginMutation, shake]);
 
@@ -101,7 +102,7 @@ export default function LoginScreen() {
             />
           </View>
           <Text style={styles.appName}>Alerta Madeira</Text>
-          <Text style={styles.subtitle}>Proteje a Comunidade! Publica já!</Text>
+          <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
         </View>
 
         <Animated.View style={[styles.formSection, { transform: [{ translateX: shakeAnim }] }]}>
@@ -109,7 +110,7 @@ export default function LoginScreen() {
             <Mail size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={t('auth.email')}
               placeholderTextColor={Colors.textMuted}
               value={email}
               onChangeText={(value) => {
@@ -132,7 +133,7 @@ export default function LoginScreen() {
             <Lock size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Palavra-passe"
+              placeholder={t('auth.password')}
               placeholderTextColor={Colors.textMuted}
               value={password}
               onChangeText={(value) => {
@@ -163,10 +164,10 @@ export default function LoginScreen() {
               <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
                 {rememberMe && <Text style={styles.checkmark}>✓</Text>}
               </View>
-              <Text style={styles.rememberText}>Memorizar dados</Text>
+              <Text style={styles.rememberText}>{t('auth.rememberMe')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/forgot-password' as any)}>
-              <Text style={styles.forgotText}>Esqueceu a senha?</Text>
+              <Text style={styles.forgotText}>{t('auth.forgotPassword')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -188,14 +189,14 @@ export default function LoginScreen() {
             {loginMutation.isPending || initializing ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.loginBtnText}>Entrar</Text>
+              <Text style={styles.loginBtnText}>{t('auth.login')}</Text>
             )}
           </TouchableOpacity>
 
           <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Não tem conta? </Text>
+            <Text style={styles.registerText}>{t('auth.noAccount')} </Text>
             <TouchableOpacity onPress={() => router.push('/register' as any)}>
-              <Text style={styles.registerLink}>Criar conta</Text>
+              <Text style={styles.registerLink}>{t('auth.createAccount')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -204,7 +205,7 @@ export default function LoginScreen() {
             onPress={() => router.push('/admin-login' as any)}
           >
             <ShieldCheck size={14} color={Colors.textMuted} />
-            <Text style={styles.adminLoginText}>Acesso Administração</Text>
+            <Text style={styles.adminLoginText}>{t('auth.adminAccess')}</Text>
           </TouchableOpacity>
 
           <View style={styles.publicLinksRow}>
@@ -213,7 +214,7 @@ export default function LoginScreen() {
               onPress={() => router.push('/privacy-policy' as any)}
             >
               <FileText size={13} color={Colors.textMuted} />
-              <Text style={styles.publicLinkText}>Política de Privacidade</Text>
+              <Text style={styles.publicLinkText}>{t('auth.privacyPolicy')}</Text>
             </TouchableOpacity>
             <View style={styles.linkDivider} />
             <TouchableOpacity
@@ -221,7 +222,7 @@ export default function LoginScreen() {
               onPress={() => router.push('/contacts' as any)}
             >
               <MessageCircle size={13} color={Colors.textMuted} />
-              <Text style={styles.publicLinkText}>Contactos</Text>
+              <Text style={styles.publicLinkText}>{t('auth.contacts')}</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>

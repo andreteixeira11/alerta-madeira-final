@@ -9,6 +9,7 @@ import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { translateError } from '@/utils/translateError';
 import * as Haptics from 'expo-haptics';
+import { t } from '@/utils/i18n';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -21,15 +22,15 @@ export default function RegisterScreen() {
 
   const handleRegister = useCallback(async () => {
     if (!username.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Erro', 'Preencha todos os campos');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Erro', 'As palavras-passe não coincidem');
+      Alert.alert(t('common.error'), t('auth.passwordMismatch'));
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Erro', 'A palavra-passe deve ter pelo menos 6 caracteres');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
 
@@ -40,12 +41,12 @@ export default function RegisterScreen() {
         username: username.trim(),
       });
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       console.log('[Register] Account created, navigating to main screen');
       router.replace('/' as any);
     } catch (error: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', translateError(error));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t('common.error'), translateError(error));
     }
   }, [username, email, password, confirmPassword, registerMutation, router]);
 
@@ -68,8 +69,8 @@ export default function RegisterScreen() {
           <View style={styles.iconCircle}>
             <UserPlus size={30} color={Colors.white} />
           </View>
-          <Text style={styles.title}>Criar Conta</Text>
-          <Text style={styles.subtitle}>Junte-se à comunidade Alerta Madeira</Text>
+          <Text style={styles.title}>{t('auth.createAccount')}</Text>
+          <Text style={styles.subtitle}>{t('auth.registerSubtitle')}</Text>
         </View>
 
         <View style={styles.form}>
@@ -77,7 +78,7 @@ export default function RegisterScreen() {
             <User size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Nome de utilizador"
+              placeholder={t('auth.username')}
               placeholderTextColor={Colors.textMuted}
               value={username}
               onChangeText={setUsername}
@@ -90,7 +91,7 @@ export default function RegisterScreen() {
             <Mail size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={t('auth.email')}
               placeholderTextColor={Colors.textMuted}
               value={email}
               onChangeText={setEmail}
@@ -105,7 +106,7 @@ export default function RegisterScreen() {
             <Lock size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Palavra-passe"
+              placeholder={t('auth.password')}
               placeholderTextColor={Colors.textMuted}
               value={password}
               onChangeText={setPassword}
@@ -121,7 +122,7 @@ export default function RegisterScreen() {
             <Lock size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Confirmar palavra-passe"
+              placeholder={t('auth.confirmPassword')}
               placeholderTextColor={Colors.textMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -140,14 +141,14 @@ export default function RegisterScreen() {
             {registerMutation.isPending ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.registerBtnText}>Criar Conta</Text>
+              <Text style={styles.registerBtnText}>{t('auth.createAccount')}</Text>
             )}
           </TouchableOpacity>
 
           <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Já tem conta? </Text>
+            <Text style={styles.loginText}>{t('auth.alreadyHaveAccount')} </Text>
             <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.loginLink}>Entrar</Text>
+              <Text style={styles.loginLink}>{t('auth.login')}</Text>
             </TouchableOpacity>
           </View>
         </View>

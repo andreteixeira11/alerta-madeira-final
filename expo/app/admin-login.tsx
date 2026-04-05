@@ -11,6 +11,7 @@ import { translateError } from '@/utils/translateError';
 import { supabase } from '@/lib/supabase';
 import { normalizeEmail, signInWithRetry } from '@/utils/auth';
 import * as Haptics from 'expo-haptics';
+import { t } from '@/utils/i18n';
 
 export default function AdminLoginScreen() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function AdminLoginScreen() {
       const userId = data.user?.id;
 
       if (!userId) {
-        throw new Error('Utilizador não encontrado');
+        throw new Error(t('error.userNotFound'));
       }
 
       const { data: userProfile, error: profileError } = await supabase
@@ -37,12 +38,12 @@ export default function AdminLoginScreen() {
 
       if (profileError) {
         await supabase.auth.signOut();
-        throw new Error('Erro ao verificar permissões');
+        throw new Error(t('auth.adminPermissionCheckError'));
       }
 
       if (userProfile?.role !== 'admin') {
         await supabase.auth.signOut();
-        throw new Error('Esta conta não tem permissões de administrador.');
+        throw new Error(t('auth.adminNoPermission'));
       }
 
       return data;
@@ -63,17 +64,17 @@ export default function AdminLoginScreen() {
     const normalizedEmail = normalizeEmail(email);
 
     if (!normalizedEmail || !password.trim()) {
-      setStatusMessage('Preencha o email e a palavra-passe para continuar.');
+      setStatusMessage(t('auth.fillEmailPassword'));
       shake();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    setStatusMessage('A validar permissões de administrador...');
+    setStatusMessage(t('auth.adminChecking'));
 
     try {
       await adminLoginMutation.mutateAsync({ email: normalizedEmail, password });
-      setStatusMessage('Acesso de administrador confirmado.');
+      setStatusMessage(t('auth.adminConfirmed'));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/admin' as any);
     } catch (error: unknown) {
@@ -81,7 +82,7 @@ export default function AdminLoginScreen() {
       setStatusMessage(translatedError);
       shake();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', translatedError);
+      Alert.alert(t('common.error'), translatedError);
     }
   }, [adminLoginMutation, email, password, router, shake]);
 
@@ -108,22 +109,22 @@ export default function AdminLoginScreen() {
               </View>
             </View>
           </View>
-          <Text style={styles.appName}>Administração</Text>
-          <Text style={styles.subtitle}>Alerta Madeira · Backoffice</Text>
+          <Text style={styles.appName}>{t('auth.adminTitle')}</Text>
+          <Text style={styles.subtitle}>{t('auth.adminSubtitle')}</Text>
         </View>
 
         <Animated.View style={[styles.formSection, { transform: [{ translateX: shakeAnim }] }]}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Login de Administrador</Text>
+            <Text style={styles.cardTitle}>{t('auth.adminLoginTitle')}</Text>
             <Text style={styles.cardDesc}>
-              Apenas contas com permissões de administrador podem aceder ao painel.
+              {t('auth.adminLoginDescription')}
             </Text>
 
             <View style={styles.inputContainer}>
               <Mail size={18} color={Colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Email do administrador"
+                placeholder={t('auth.adminEmail')}
                 placeholderTextColor={Colors.textMuted}
                 value={email}
                 onChangeText={(value) => {
@@ -143,7 +144,7 @@ export default function AdminLoginScreen() {
               <Lock size={18} color={Colors.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Palavra-passe"
+                placeholder={t('auth.password')}
                 placeholderTextColor={Colors.textMuted}
                 value={password}
                 onChangeText={(value) => {
@@ -184,7 +185,7 @@ export default function AdminLoginScreen() {
               ) : (
                 <>
                   <ShieldCheck size={18} color={Colors.white} />
-                  <Text style={styles.loginBtnText}>Entrar como Admin</Text>
+                  <Text style={styles.loginBtnText}>{t('auth.adminAccess')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -193,7 +194,7 @@ export default function AdminLoginScreen() {
           <View style={styles.securityNote}>
             <View style={styles.securityDot} />
             <Text style={styles.securityText}>
-              Acesso seguro · Apenas administradores autorizados
+              {t('auth.authorizedAdminsOnly')}
             </Text>
           </View>
         </Animated.View>

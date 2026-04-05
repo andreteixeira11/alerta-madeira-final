@@ -1,5 +1,7 @@
 import { translateError } from '@/utils/translateError';
 import { checkSupabaseConnection, supabase } from '@/lib/supabase';
+import { t } from '@/utils/i18n';
+const LOGIN_RETRY_DELAYS_MS = [900, 1600] as const;
 
 const NETWORK_ERROR_SNIPPETS = [
   'network request failed',
@@ -60,49 +62,38 @@ export async function signInWithRetry(email: string, password: string) {
   console.log('[Auth] Login attempt started for:', normalizedEmail);
   await clearStaleSessionIfNeeded();
 
-  const firstAttempt = await supabase.auth.signInWithPassword({
-    email: normalizedEmail,
-    password,
-  });
+  for (let attemptIndex = 0; attemptIndex <= LOGIN_RETRY_DELAYS_MS.length; attemptIndex += 1) {
+    const attemptNumber = attemptIndex + 1;
+    console.log(`[Auth] signInWithPassword attempt ${attemptNumber} started`);
 
-  if (!firstAttempt.error) {
-    console.log('[Auth] Login attempt succeeded on first try');
-    return firstAttempt.data;
-  }
+    const result = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
 
-  console.log('[Auth] Login first attempt failed:', firstAttempt.error.message);
-
-  if (!isTransientAuthError(firstAttempt.error)) {
-    throw new Error(translateError(firstAttempt.error));
-  }
-
-  const connectionOk = await checkSupabaseConnection();
-  console.log('[Auth] Connection check before retry:', connectionOk ? 'reachable' : 'unreachable');
-
-  await wait(connectionOk ? 900 : 1600);
-
-  const secondAttempt = await supabase.auth.signInWithPassword({
-    email: normalizedEmail,
-    password,
-  });
-
-  if (!secondAttempt.error) {
-    console.log('[Auth] Login attempt succeeded on retry');
-    return secondAttempt.data;
-  }
-
-  console.log('[Auth] Login retry failed:', secondAttempt.error.message);
-
-  if (isTransientAuthError(secondAttempt.error)) {
-    const secondConnectionOk = await checkSupabaseConnection();
-    console.log('[Auth] Connection check after retry:', secondConnectionOk ? 'reachable' : 'unreachable');
-
-    if (!secondConnectionOk) {
-      throw new Error('Sem ligação ao servidor. Verifique a internet e tente novamente.');
+    if (!result.error) {
+      console.log(`[Auth] Login attempt ${attemptNumber} succeeded`);
+      return result.data;
     }
 
-    throw new Error('Não foi possível concluir o login agora. Tente novamente dentro de instantes.');
+    console.log(`[Auth] Login attempt ${attemptNumber} failed:`, result.error.message);
+
+    if (!isTransientAuthError(result.error)) {
+      throw new Error(translateError(result.error));
+    }
+
+    if (attemptIndex < LOGIN_RETRY_DELAYS_MS.length) {
+      const delayMs = LOGIN_RETRY_DELAYS_MS[attemptIndex];
+      console.log(`[Auth] Retrying sign in after ${delayMs}ms due to transient auth error`);
+      await wait(delayMs);
+      continue;
+    }
+
+    const serviceReachable = await checkSupabaseConnection();
+    console.log('[Auth] Supabase reachability after transient auth errors:', serviceReachable);
+
+    throw new Error(serviceReachable ? t('auth.loginTemporarilyUnavailable') : t('auth.loginConnectionIssue'));
   }
 
-  throw new Error(translateError(secondAttempt.error));
+  throw new Error(t('auth.loginTemporarilyUnavailable'));
 }

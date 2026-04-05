@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator,
-  TextInput, Switch, Platform,
+  TextInput, Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -18,6 +18,7 @@ import PostCard from '@/components/PostCard';
 import { supabase } from '@/lib/supabase';
 import { uploadImageToSupabase } from '@/utils/uploadImage';
 import * as Haptics from 'expo-haptics';
+import { t } from '@/utils/i18n';
 
 const NOTIF_PREFS_KEY = 'notification_preferences';
 
@@ -44,14 +45,13 @@ export default function ProfileScreen() {
   const [showSettings, setShowSettings] = useState(false);
   const [showPosts, setShowPosts] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(NOTIF_PREFS_KEY).then(stored => {
+    void AsyncStorage.getItem(NOTIF_PREFS_KEY).then(stored => {
       if (stored) {
         try { setNotifPrefs(JSON.parse(stored)); } catch { /* ignore */ }
       }
@@ -62,7 +62,7 @@ export default function ProfileScreen() {
     const updated = { ...notifPrefs, [key]: value };
     setNotifPrefs(updated);
     await AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(updated));
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [notifPrefs]);
 
   const handleEditName = useCallback(() => {
@@ -79,10 +79,10 @@ export default function ProfileScreen() {
       await supabase.from('posts').update({ user_name: newName.trim() }).eq('user_id', user.id);
       await refetchProfile();
       setEditingName(false);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Sucesso', 'Nome atualizado com sucesso');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(t('common.success'), t('profile.updatedName'));
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Erro ao atualizar nome');
+      Alert.alert(t('common.error'), error.message || t('profile.updateNameError'));
     } finally {
       setSavingName(false);
     }
@@ -90,29 +90,28 @@ export default function ProfileScreen() {
 
   const handleChangePassword = useCallback(async () => {
     if (!newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert('Erro', 'Preencha todos os campos');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Erro', 'As palavras-passe não coincidem');
+      Alert.alert(t('common.error'), t('auth.passwordMismatch'));
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Erro', 'A palavra-passe deve ter pelo menos 6 caracteres');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
     setChangingPassword(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Sucesso', 'Palavra-passe alterada com sucesso');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(t('common.success'), t('profile.changedPassword'));
       setShowPasswordChange(false);
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Erro ao alterar palavra-passe');
+      Alert.alert(t('common.error'), error.message || t('profile.changePasswordError'));
     } finally {
       setChangingPassword(false);
     }
@@ -122,7 +121,7 @@ export default function ProfileScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permissão Necessária', 'Precisamos de acesso à galeria.');
+        Alert.alert(t('profile.galleryPermission'), t('profile.galleryPermissionBody'));
         return;
       }
 
@@ -157,7 +156,7 @@ export default function ProfileScreen() {
 
         if (!avatarUrl) {
           console.log('[Profile] Avatar upload failed');
-          Alert.alert('Aviso', 'Erro ao fazer upload da fotografia.\n\nVerifique se o bucket "profilepicture" existe no Supabase e tem políticas RLS para INSERT/SELECT.');
+          Alert.alert(t('common.error'), t('profile.avatarUploadWarning'));
           setUploadingAvatar(false);
           return;
         }
@@ -166,30 +165,30 @@ export default function ProfileScreen() {
         await supabase.from('posts').update({ user_avatar: avatarUrl }).eq('user_id', user.id);
         await refetchProfile();
 
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Sucesso', 'Fotografia de perfil atualizada');
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(t('common.success'), t('profile.avatarUpdated'));
       } catch (uploadErr: any) {
         console.log('[Profile] Avatar exception:', uploadErr.message);
-        Alert.alert('Erro', 'Erro ao atualizar fotografia');
+        Alert.alert(t('common.error'), t('profile.avatarUpdateError'));
       } finally {
         setUploadingAvatar(false);
       }
     } catch (err: any) {
       console.log('[Profile] Image picker error:', err.message);
-      Alert.alert('Erro', 'Não foi possível abrir a galeria');
+      Alert.alert(t('common.error'), t('profile.galleryOpenError'));
       setUploadingAvatar(false);
     }
   }, [user, refetchProfile]);
 
   const handleLogout = useCallback(() => {
-    Alert.alert('Terminar Sessão', 'Tem a certeza que deseja sair?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('profile.logoutTitle'), t('profile.logoutBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Sair',
+        text: t('profile.logout'),
         style: 'destructive',
         onPress: () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          logout();
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          void logout();
         },
       },
     ]);
@@ -225,7 +224,7 @@ export default function ProfileScreen() {
               style={styles.editNameInput}
               value={newName}
               onChangeText={setNewName}
-              placeholder="Novo nome"
+              placeholder={t('profile.newName')}
               placeholderTextColor={Colors.textMuted}
               autoFocus
             />
@@ -244,7 +243,7 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <TouchableOpacity onPress={handleEditName} style={styles.nameRow}>
-            <Text style={styles.displayName}>{profile?.name ?? 'Utilizador'}</Text>
+            <Text style={styles.displayName}>{profile?.name ?? t('common.user')}</Text>
             <Edit3 size={14} color={Colors.textMuted} />
           </TouchableOpacity>
         )}

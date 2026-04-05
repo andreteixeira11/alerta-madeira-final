@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { trpc, trpcClient } from '@/lib/trpc';
 import { supabase } from '@/lib/supabase';
 import Colors from '@/constants/colors';
+import { t } from '@/utils/i18n';
 
 
 Notifications.setNotificationHandler({
@@ -52,7 +53,7 @@ async function registerPushToken(userId?: string) {
   }
 }
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
@@ -86,7 +87,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoggedIn && user?.id && !pushRegistered.current) {
       pushRegistered.current = true;
-      registerPushToken(user.id);
+      void registerPushToken(user.id);
     }
     if (!isLoggedIn) {
       pushRegistered.current = false;
@@ -100,7 +101,7 @@ function RootLayoutNav() {
   return (
     <Stack
       screenOptions={{
-        headerBackTitle: 'Voltar',
+        headerBackTitle: t('nav.back'),
         headerStyle: { backgroundColor: Colors.white },
         headerTintColor: Colors.text,
         headerTitleStyle: { fontWeight: '700' },
@@ -111,9 +112,9 @@ function RootLayoutNav() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-      <Stack.Screen name="create-post" options={{ title: 'Nova Publicação' }} />
-      <Stack.Screen name="edit-post" options={{ title: 'Editar Publicação' }} />
-      <Stack.Screen name="post-detail" options={{ title: 'Publicação' }} />
+      <Stack.Screen name="create-post" options={{ title: t('tabs.incidents') }} />
+      <Stack.Screen name="edit-post" options={{ title: t('tabs.incidents') }} />
+      <Stack.Screen name="post-detail" options={{ title: t('tabs.incidents') }} />
       <Stack.Screen name="verify-email" options={{ headerShown: false }} />
       <Stack.Screen name="reset-password" options={{ headerShown: false }} />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
@@ -126,7 +127,7 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
-    SplashScreen.hideAsync();
+    void SplashScreen.hideAsync();
   }, []);
 
   return (

@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
 import { trpc } from '@/lib/trpc';
+import { t } from '@/utils/i18n';
 
 const CODE_LENGTH = 6;
 
@@ -88,7 +89,7 @@ export default function VerifyEmailScreen() {
   const handleVerify = useCallback(async () => {
     const fullCode = code.join('');
     if (fullCode.length !== CODE_LENGTH) {
-      Alert.alert('Erro', 'Insira o código completo de 6 dígitos');
+      Alert.alert(t('common.error'), t('auth.enterFullCode'));
       return;
     }
 
@@ -100,7 +101,7 @@ export default function VerifyEmailScreen() {
         type: verificationType,
       });
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       if (verificationType === 'password_reset') {
         router.replace({
@@ -108,14 +109,14 @@ export default function VerifyEmailScreen() {
           params: { email, verified: 'true', code: fullCode },
         } as any);
       } else {
-        Alert.alert('Sucesso', 'Email verificado com sucesso! Bem-vindo ao Alerta Madeira.', [
-          { text: 'Continuar', onPress: () => router.replace('/' as any) },
+        Alert.alert(t('common.success'), t('auth.emailVerifiedSuccess'), [
+          { text: t('common.continue'), onPress: () => router.replace('/' as any) },
         ]);
       }
     } catch (error: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       shake();
-      Alert.alert('Erro', translateError(error));
+      Alert.alert(t('common.error'), translateError(error));
     } finally {
       setIsVerifying(false);
     }
@@ -132,10 +133,10 @@ export default function VerifyEmailScreen() {
       setResendCooldown(60);
       setCode(Array(CODE_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Código Enviado', 'Um novo código foi enviado para o seu email.');
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(t('auth.codeSentTitle'), t('auth.codeSentBody'));
     } catch (error: any) {
-      Alert.alert('Erro', translateError(error));
+      Alert.alert(t('common.error'), translateError(error));
     }
   }, [resendCooldown, email, verificationType, sendCodeMutation]);
 
@@ -156,11 +157,11 @@ export default function VerifyEmailScreen() {
           <View style={styles.iconCircle}>
             <ShieldCheck size={30} color={Colors.white} />
           </View>
-          <Text style={styles.title}>Verificar Código</Text>
+          <Text style={styles.title}>{t('auth.verifyCode')}</Text>
           <Text style={styles.subtitle}>
             {isPasswordReset
-              ? 'Insira o código enviado para o seu email para redefinir a palavra-passe'
-              : 'Insira o código enviado para o seu email para verificar a sua conta'}
+              ? t('auth.verifyResetSubtitle')
+              : t('auth.verifyCodeSubtitle')}
           </Text>
           <View style={styles.emailBadge}>
             <Text style={styles.emailBadgeText}>{email}</Text>
@@ -197,7 +198,7 @@ export default function VerifyEmailScreen() {
           {isVerifying ? (
             <ActivityIndicator color={Colors.white} />
           ) : (
-            <Text style={styles.verifyBtnText}>Verificar</Text>
+            <Text style={styles.verifyBtnText}>{t('auth.verifyCode')}</Text>
           )}
         </TouchableOpacity>
 
@@ -210,10 +211,10 @@ export default function VerifyEmailScreen() {
           <RotateCcw size={16} color={resendCooldown > 0 ? Colors.textMuted : Colors.primary} />
           <Text style={[styles.resendText, resendCooldown > 0 && styles.resendTextDisabled]}>
             {sendCodeMutation.isPending
-              ? 'A enviar...'
+              ? t('auth.sending')
               : resendCooldown > 0
-                ? `Reenviar código (${resendCooldown}s)`
-                : 'Reenviar código'}
+                ? t('auth.resendCodeIn', { seconds: resendCooldown })
+                : t('auth.resendCode')}
           </Text>
         </TouchableOpacity>
       </Animated.View>

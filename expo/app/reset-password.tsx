@@ -11,6 +11,7 @@ import { translateError } from '@/utils/translateError';
 import { supabase } from '@/lib/supabase';
 import { useMutation } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc';
+import { t } from '@/utils/i18n';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -43,41 +44,41 @@ export default function ResetPasswordScreen() {
           return true;
         }
         
-        throw new Error(err.message || 'Erro ao redefinir palavra-passe. Tente novamente.');
+        throw new Error(err.message || t('auth.loginTemporarilyUnavailable'));
       }
     },
   });
 
   const handleReset = useCallback(async () => {
     if (!password.trim()) {
-      Alert.alert('Erro', 'Insira a nova palavra-passe');
+      Alert.alert(t('common.error'), t('auth.enterNewPassword'));
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Erro', 'A palavra-passe deve ter pelo menos 6 caracteres');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Erro', 'As palavras-passe não coincidem');
+      Alert.alert(t('common.error'), t('auth.passwordMismatch'));
       return;
     }
 
     if (verified !== 'true' || !resetCode) {
-      Alert.alert('Erro', 'Verificação não concluída');
+      Alert.alert(t('common.error'), t('auth.verificationIncomplete'));
       return;
     }
 
     try {
       await resetMutation.mutateAsync({ userEmail: email || '', newPassword: password, otpCode: resetCode });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Sucesso', 'Palavra-passe atualizada com sucesso!', [
-        { text: 'OK', onPress: () => router.replace('/login' as any) },
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(t('common.success'), t('auth.passwordUpdated'), [
+        { text: t('common.ok'), onPress: () => router.replace('/login' as any) },
       ]);
     } catch (error: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Erro', translateError(error));
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(t('common.error'), translateError(error));
     }
-  }, [password, confirmPassword, verified, email, resetMutation, router]);
+  }, [password, confirmPassword, verified, email, resetCode, resetMutation, router]);
 
   return (
     <KeyboardAvoidingView
@@ -96,10 +97,10 @@ export default function ResetPasswordScreen() {
           </View>
           <View style={styles.verifiedBadge}>
             <CheckCircle size={14} color={Colors.success} />
-            <Text style={styles.verifiedText}>Email verificado</Text>
+            <Text style={styles.verifiedText}>{t('auth.emailVerified')}</Text>
           </View>
-          <Text style={styles.title}>Nova Palavra-passe</Text>
-          <Text style={styles.subtitle}>Defina a sua nova palavra-passe</Text>
+          <Text style={styles.title}>{t('auth.newPassword')}</Text>
+          <Text style={styles.subtitle}>{t('auth.resetSubtitle')}</Text>
         </View>
 
         <View style={styles.form}>
@@ -107,7 +108,7 @@ export default function ResetPasswordScreen() {
             <Lock size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Nova palavra-passe"
+              placeholder={t('auth.newPassword')}
               placeholderTextColor={Colors.textMuted}
               value={password}
               onChangeText={setPassword}
@@ -123,7 +124,7 @@ export default function ResetPasswordScreen() {
             <Lock size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Confirmar palavra-passe"
+              placeholder={t('auth.confirmPassword')}
               placeholderTextColor={Colors.textMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -142,7 +143,7 @@ export default function ResetPasswordScreen() {
             {resetMutation.isPending ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.resetBtnText}>Redefinir Palavra-passe</Text>
+              <Text style={styles.resetBtnText}>{t('auth.newPassword')}</Text>
             )}
           </TouchableOpacity>
         </View>

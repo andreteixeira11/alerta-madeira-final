@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
 import Colors from '@/constants/colors';
+import { t } from '@/utils/i18n';
 
 function HeaderTitle() {
   return (
@@ -12,7 +13,7 @@ function HeaderTitle() {
         style={{ width: 30, height: 30, borderRadius: 8 }}
         contentFit="cover"
       />
-      <Text style={{ fontSize: 18, fontWeight: '700' as const, color: Colors.text }}>Alerta Madeira</Text>
+      <Text style={{ fontSize: 18, fontWeight: '700' as const, color: Colors.text }}>{t('home.appName')}</Text>
     </View>
   );
 }
