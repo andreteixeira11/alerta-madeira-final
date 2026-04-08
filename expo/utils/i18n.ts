@@ -74,6 +74,9 @@ type TranslationKey =
   | 'auth.adminNoPermission'
   | 'auth.adminPermissionCheckError'
   | 'auth.authorizedAdminsOnly'
+  | 'auth.continueWithApple'
+  | 'auth.continueWithGoogle'
+  | 'auth.socialSetupRequired'
   | 'profile.updatedName'
   | 'profile.updateNameError'
   | 'profile.changedPassword'
@@ -182,6 +185,9 @@ const translations: TranslationDictionary = {
     'auth.adminNoPermission': 'Esta conta não tem permissões de administrador.',
     'auth.adminPermissionCheckError': 'Erro ao verificar permissões.',
     'auth.authorizedAdminsOnly': 'Acesso seguro · Apenas administradores autorizados',
+    'auth.continueWithApple': 'Continuar com Apple',
+    'auth.continueWithGoogle': 'Continuar com Google',
+    'auth.socialSetupRequired': 'Login social em preparação. Assim que configurar Apple e Google, esta opção ficará ativa.',
     'profile.updatedName': 'Nome atualizado com sucesso.',
     'profile.updateNameError': 'Erro ao atualizar nome.',
     'profile.changedPassword': 'Palavra-passe alterada com sucesso.',
@@ -287,6 +293,9 @@ const translations: TranslationDictionary = {
     'auth.adminNoPermission': 'This account does not have administrator permissions.',
     'auth.adminPermissionCheckError': 'Unable to verify permissions.',
     'auth.authorizedAdminsOnly': 'Secure access · Authorized administrators only',
+    'auth.continueWithApple': 'Continue with Apple',
+    'auth.continueWithGoogle': 'Continue with Google',
+    'auth.socialSetupRequired': 'Social sign in is being prepared. Once Apple and Google are configured, this option will become available.',
     'profile.updatedName': 'Name updated successfully.',
     'profile.updateNameError': 'Unable to update name.',
     'profile.changedPassword': 'Password changed successfully.',
@@ -392,6 +401,9 @@ const translations: TranslationDictionary = {
     'auth.adminNoPermission': 'Esta cuenta no tiene permisos de administrador.',
     'auth.adminPermissionCheckError': 'No se pudieron verificar los permisos.',
     'auth.authorizedAdminsOnly': 'Acceso seguro · Solo administradores autorizados',
+    'auth.continueWithApple': 'Continuar con Apple',
+    'auth.continueWithGoogle': 'Continuar con Google',
+    'auth.socialSetupRequired': 'El inicio de sesión social se está preparando. Cuando Apple y Google estén configurados, esta opción estará disponible.',
     'profile.updatedName': 'Nombre actualizado correctamente.',
     'profile.updateNameError': 'No se pudo actualizar el nombre.',
     'profile.changedPassword': 'Contraseña cambiada correctamente.',
@@ -497,6 +509,9 @@ const translations: TranslationDictionary = {
     'auth.adminNoPermission': 'Ce compte ne dispose pas des autorisations administrateur.',
     'auth.adminPermissionCheckError': 'Impossible de vérifier les autorisations.',
     'auth.authorizedAdminsOnly': 'Accès sécurisé · Administrateurs autorisés uniquement',
+    'auth.continueWithApple': 'Continuer avec Apple',
+    'auth.continueWithGoogle': 'Continuer avec Google',
+    'auth.socialSetupRequired': 'La connexion sociale est en préparation. Une fois Apple et Google configurés, cette option sera disponible.',
     'profile.updatedName': 'Nom mis à jour avec succès.',
     'profile.updateNameError': 'Impossible de mettre à jour le nom.',
     'profile.changedPassword': 'Mot de passe modifié avec succès.',

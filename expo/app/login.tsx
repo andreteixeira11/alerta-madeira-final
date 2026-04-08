@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView,
-  Platform, ScrollView, Animated, ActivityIndicator,
+  Platform, ScrollView, Animated, ActivityIndicator, Alert,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, FileText, MessageCircle } from 'lucide-react-native';
@@ -15,6 +15,8 @@ import { t } from '@/utils/i18n';
 
 const REMEMBER_KEY = 'remember_email';
 const REMEMBER_PASS_KEY = 'remember_pass';
+
+type SocialProvider = 'apple' | 'google';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -49,6 +51,12 @@ export default function LoginScreen() {
       Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
     ]).start();
   }, [shakeAnim]);
+
+  const handleSocialAuthPress = useCallback((provider: SocialProvider) => {
+    const providerLabel = provider === 'apple' ? t('auth.continueWithApple') : t('auth.continueWithGoogle');
+    console.log('[Login] Social auth tapped:', provider);
+    Alert.alert(providerLabel, t('auth.socialSetupRequired'));
+  }, []);
 
   const handleLogin = useCallback(async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -192,6 +200,38 @@ export default function LoginScreen() {
               <Text style={styles.loginBtnText}>{t('auth.login')}</Text>
             )}
           </TouchableOpacity>
+
+          <View style={styles.socialSection}>
+            <View style={styles.socialDividerRow}>
+              <View style={styles.socialDivider} />
+              <Text style={styles.socialDividerText}>ou</Text>
+              <View style={styles.socialDivider} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialAuthPress('apple')}
+              activeOpacity={0.9}
+              testID="login-social-apple"
+            >
+              <View style={[styles.socialBadge, styles.appleBadge]}>
+                <Text style={styles.appleBadgeText}></Text>
+              </View>
+              <Text style={styles.socialButtonText}>{t('auth.continueWithApple')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={() => handleSocialAuthPress('google')}
+              activeOpacity={0.9}
+              testID="login-social-google"
+            >
+              <View style={[styles.socialBadge, styles.googleBadge]}>
+                <Text style={styles.googleBadgeText}>G</Text>
+              </View>
+              <Text style={styles.socialButtonText}>{t('auth.continueWithGoogle')}</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>{t('auth.noAccount')} </Text>
@@ -361,6 +401,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.white,
+  },
+  socialSection: {
+    marginTop: 8,
+    gap: 10,
+  },
+  socialDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 4,
+  },
+  socialDivider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+  socialDividerText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontWeight: '600' as const,
+    textTransform: 'uppercase' as const,
+  },
+  socialButton: {
+    height: 54,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  socialBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appleBadge: {
+    backgroundColor: Colors.black,
+  },
+  googleBadge: {
+    backgroundColor: Colors.primaryBg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  appleBadgeText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '700' as const,
+  },
+  googleBadgeText: {
+    color: Colors.primary,
+    fontSize: 15,
+    fontWeight: '800' as const,
+  },
+  socialButtonText: {
+    fontSize: 15,
+    color: Colors.text,
+    fontWeight: '700' as const,
   },
   registerRow: {
     flexDirection: 'row',
