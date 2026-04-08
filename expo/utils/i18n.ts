@@ -77,6 +77,11 @@ type TranslationKey =
   | 'auth.continueWithApple'
   | 'auth.continueWithGoogle'
   | 'auth.socialSetupRequired'
+  | 'auth.appleChecking'
+  | 'auth.appleUnavailable'
+  | 'auth.appleOnlyOnIOS'
+  | 'auth.appleMissingToken'
+  | 'auth.appleCanceled'
   | 'profile.updatedName'
   | 'profile.updateNameError'
   | 'profile.changedPassword'
@@ -188,6 +193,11 @@ const translations: TranslationDictionary = {
     'auth.continueWithApple': 'Continuar com Apple',
     'auth.continueWithGoogle': 'Continuar com Google',
     'auth.socialSetupRequired': 'Login social em preparação. Assim que configurar Apple e Google, esta opção ficará ativa.',
+    'auth.appleChecking': 'A validar conta Apple...',
+    'auth.appleUnavailable': 'Sign in with Apple não está disponível neste dispositivo.',
+    'auth.appleOnlyOnIOS': 'Esta opção está disponível apenas no iPhone e iPad.',
+    'auth.appleMissingToken': 'A Apple não devolveu um token de autenticação válido.',
+    'auth.appleCanceled': 'O início de sessão com Apple foi cancelado.',
     'profile.updatedName': 'Nome atualizado com sucesso.',
     'profile.updateNameError': 'Erro ao atualizar nome.',
     'profile.changedPassword': 'Palavra-passe alterada com sucesso.',
@@ -296,6 +306,11 @@ const translations: TranslationDictionary = {
     'auth.continueWithApple': 'Continue with Apple',
     'auth.continueWithGoogle': 'Continue with Google',
     'auth.socialSetupRequired': 'Social sign in is being prepared. Once Apple and Google are configured, this option will become available.',
+    'auth.appleChecking': 'Checking Apple account...',
+    'auth.appleUnavailable': 'Sign in with Apple is not available on this device.',
+    'auth.appleOnlyOnIOS': 'This option is only available on iPhone and iPad.',
+    'auth.appleMissingToken': 'Apple did not return a valid authentication token.',
+    'auth.appleCanceled': 'Apple sign in was canceled.',
     'profile.updatedName': 'Name updated successfully.',
     'profile.updateNameError': 'Unable to update name.',
     'profile.changedPassword': 'Password changed successfully.',
@@ -404,6 +419,11 @@ const translations: TranslationDictionary = {
     'auth.continueWithApple': 'Continuar con Apple',
     'auth.continueWithGoogle': 'Continuar con Google',
     'auth.socialSetupRequired': 'El inicio de sesión social se está preparando. Cuando Apple y Google estén configurados, esta opción estará disponible.',
+    'auth.appleChecking': 'Validando cuenta de Apple...',
+    'auth.appleUnavailable': 'Iniciar sesión con Apple no está disponible en este dispositivo.',
+    'auth.appleOnlyOnIOS': 'Esta opción solo está disponible en iPhone y iPad.',
+    'auth.appleMissingToken': 'Apple no devolvió un token de autenticación válido.',
+    'auth.appleCanceled': 'El inicio de sesión con Apple fue cancelado.',
     'profile.updatedName': 'Nombre actualizado correctamente.',
     'profile.updateNameError': 'No se pudo actualizar el nombre.',
     'profile.changedPassword': 'Contraseña cambiada correctamente.',
@@ -512,6 +532,11 @@ const translations: TranslationDictionary = {
     'auth.continueWithApple': 'Continuer avec Apple',
     'auth.continueWithGoogle': 'Continuer avec Google',
     'auth.socialSetupRequired': 'La connexion sociale est en préparation. Une fois Apple et Google configurés, cette option sera disponible.',
+    'auth.appleChecking': 'Vérification du compte Apple...',
+    'auth.appleUnavailable': 'La connexion avec Apple n’est pas disponible sur cet appareil.',
+    'auth.appleOnlyOnIOS': 'Cette option est disponible uniquement sur iPhone et iPad.',
+    'auth.appleMissingToken': 'Apple n’a pas renvoyé de jeton d’authentification valide.',
+    'auth.appleCanceled': 'La connexion avec Apple a été annulée.',
     'profile.updatedName': 'Nom mis à jour avec succès.',
     'profile.updateNameError': 'Impossible de mettre à jour le nom.',
     'profile.changedPassword': 'Mot de passe modifié avec succès.',
