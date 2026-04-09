@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 
 type SupabaseConfigDiagnostics = {
@@ -8,6 +9,9 @@ type SupabaseConfigDiagnostics = {
   isKeyPresent: boolean;
   isKeyJwtLike: boolean;
   jwtRole: string | null;
+  extraUrlPresent: boolean;
+  extraKeyPresent: boolean;
+  extraMatchesProcessEnv: boolean;
 };
 
 function decodeBase64UrlSegment(segment: string): string | null {
@@ -81,11 +85,20 @@ function maskKey(value: string): string {
 }
 
 function getValidatedSupabaseConfig(): { url: string; anonKey: string; diagnostics: SupabaseConfigDiagnostics } {
-  const url = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
-  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';
+  const rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const rawAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+  const url = rawUrl?.trim() ?? '';
+  const anonKey = rawAnonKey?.trim() ?? '';
+  const extra = (Constants.expoConfig?.extra ?? {}) as {
+    supabaseUrl?: string;
+    supabaseAnonKey?: string;
+  };
+  const extraUrl = extra.supabaseUrl?.trim() ?? '';
+  const extraAnonKey = extra.supabaseAnonKey?.trim() ?? '';
   const jwtRole = getJwtRole(anonKey);
   const isUrlValid = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url);
   const isKeyJwtLike = anonKey.split('.').length === 3;
+  const extraMatchesProcessEnv = extraUrl === url && extraAnonKey === anonKey;
 
   const diagnostics: SupabaseConfigDiagnostics = {
     url,
@@ -94,12 +107,19 @@ function getValidatedSupabaseConfig(): { url: string; anonKey: string; diagnosti
     isKeyPresent: anonKey.length > 0,
     isKeyJwtLike,
     jwtRole,
+    extraUrlPresent: extraUrl.length > 0,
+    extraKeyPresent: extraAnonKey.length > 0,
+    extraMatchesProcessEnv,
   };
 
   console.log('[Supabase] Runtime config diagnostics:', diagnostics);
 
+  if (typeof rawUrl !== 'string' || typeof rawAnonKey !== 'string') {
+    throw new Error('Missing Supabase public environment variables in process.env.');
+  }
+
   if (!url || !anonKey) {
-    throw new Error('Missing Supabase public environment variables.');
+    throw new Error('Supabase public environment variables must not be empty.');
   }
 
   if (!isUrlValid) {
@@ -120,6 +140,14 @@ function getValidatedSupabaseConfig(): { url: string; anonKey: string; diagnosti
 
   if (jwtRole !== null && jwtRole !== 'anon') {
     throw new Error(`Unexpected Supabase client key role: ${jwtRole}`);
+  }
+
+  if (!extraUrl || !extraAnonKey) {
+    throw new Error('Supabase public environment variables are missing from Expo runtime config.');
+  }
+
+  if (!extraMatchesProcessEnv) {
+    throw new Error('Supabase runtime config does not match process.env values.');
   }
 
   return { url, anonKey, diagnostics };
