@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "alerta.madeira"
+      "bundleIdentifier": "app.alerta.madeira"
     },
     "android": {
       "adaptiveIcon": {
