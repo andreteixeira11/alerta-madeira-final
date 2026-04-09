@@ -13,6 +13,8 @@ const ERROR_MAP: Record<string, ReturnType<typeof t>> = {
   'Auth session missing': t('error.authSessionMissing'),
   'JWT expired': t('error.jwtExpired'),
   'Token has expired or is invalid': t('error.tokenExpired'),
+  'Invalid API key': t('auth.loginTemporarilyUnavailable'),
+  'invalid api key': t('auth.loginTemporarilyUnavailable'),
   'User not found': t('error.userNotFound'),
   'Network request failed': t('error.networkRequestFailed'),
   'Failed to fetch': t('error.networkRequestFailed'),

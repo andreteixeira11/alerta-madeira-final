@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView,
-  Platform, ScrollView, Animated, ActivityIndicator, Alert,
+  Platform, ScrollView, Animated, ActivityIndicator,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck, FileText, MessageCircle } from 'lucide-react-native';
@@ -9,7 +9,6 @@ import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { translateError } from '@/utils/translateError';
 import * as Haptics from 'expo-haptics';
 import { t } from '@/utils/i18n';
@@ -17,11 +16,9 @@ import { t } from '@/utils/i18n';
 const REMEMBER_KEY = 'remember_email';
 const REMEMBER_PASS_KEY = 'remember_pass';
 
-type SocialProvider = 'apple' | 'google';
-
 export default function LoginScreen() {
   const router = useRouter();
-  const { loginMutation, appleLoginMutation, initializing } = useAuth();
+  const { loginMutation, initializing } = useAuth();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -52,30 +49,6 @@ export default function LoginScreen() {
       Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
     ]).start();
   }, [shakeAnim]);
-
-  const handleSocialAuthPress = useCallback(async (provider: SocialProvider) => {
-    const providerLabel = provider === 'apple' ? t('auth.continueWithApple') : t('auth.continueWithGoogle');
-    console.log('[Login] Social auth tapped:', provider);
-
-    if (provider !== 'apple') {
-      Alert.alert(providerLabel, t('auth.socialSetupRequired'));
-      return;
-    }
-
-    setStatusMessage(t('auth.appleChecking'));
-
-    try {
-      await appleLoginMutation.mutateAsync();
-      setStatusMessage(t('auth.loginSuccess'));
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: unknown) {
-      const translatedError = translateError(error);
-      setStatusMessage(translatedError);
-      shake();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      console.log('[Login] Apple sign in error shown in banner:', translatedError);
-    }
-  }, [appleLoginMutation, shake]);
 
   const handleLogin = useCallback(async () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -205,67 +178,20 @@ export default function LoginScreen() {
           )}
 
           <TouchableOpacity
-            style={[styles.loginBtn, (loginMutation.isPending || appleLoginMutation.isPending || initializing) && styles.loginBtnDisabled]}
+            style={[styles.loginBtn, (loginMutation.isPending || initializing) && styles.loginBtnDisabled]}
             onPress={() => {
               void handleLogin();
             }}
-            disabled={loginMutation.isPending || appleLoginMutation.isPending || initializing}
+            disabled={loginMutation.isPending || initializing}
             activeOpacity={0.85}
             testID="login-submit"
           >
-            {loginMutation.isPending || appleLoginMutation.isPending || initializing ? (
+            {loginMutation.isPending || initializing ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.loginBtnText}>{t('auth.login')}</Text>
             )}
           </TouchableOpacity>
-
-          <View style={styles.socialSection}>
-            <View style={styles.socialDividerRow}>
-              <View style={styles.socialDivider} />
-              <Text style={styles.socialDividerText}>ou</Text>
-              <View style={styles.socialDivider} />
-            </View>
-
-            {Platform.OS === 'ios' ? (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={14}
-                style={styles.appleAuthButton}
-                onPress={() => {
-                  void handleSocialAuthPress('apple');
-                }}
-                testID="login-social-apple"
-              />
-            ) : (
-              <TouchableOpacity
-                style={[styles.socialButton, styles.socialButtonDisabled]}
-                onPress={() => {
-                  void handleSocialAuthPress('apple');
-                }}
-                activeOpacity={0.9}
-                testID="login-social-apple"
-              >
-                <View style={[styles.socialBadge, styles.appleBadge]}>
-                  <Text style={styles.appleBadgeText}></Text>
-                </View>
-                <Text style={styles.socialButtonText}>{t('auth.continueWithApple')}</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={() => handleSocialAuthPress('google')}
-              activeOpacity={0.9}
-              testID="login-social-google"
-            >
-              <View style={[styles.socialBadge, styles.googleBadge]}>
-                <Text style={styles.googleBadgeText}>G</Text>
-              </View>
-              <Text style={styles.socialButtonText}>{t('auth.continueWithGoogle')}</Text>
-            </TouchableOpacity>
-          </View>
 
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>{t('auth.noAccount')} </Text>
@@ -435,75 +361,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700' as const,
     color: Colors.white,
-  },
-  socialSection: {
-    marginTop: 8,
-    gap: 10,
-  },
-  socialDividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 4,
-  },
-  socialDivider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  socialDividerText: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    fontWeight: '600' as const,
-    textTransform: 'uppercase' as const,
-  },
-  socialButton: {
-    height: 54,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.white,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  socialButtonDisabled: {
-    opacity: 0.65,
-  },
-  appleAuthButton: {
-    width: '100%',
-    height: 54,
-  },
-  socialBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appleBadge: {
-    backgroundColor: Colors.black,
-  },
-  googleBadge: {
-    backgroundColor: Colors.primaryBg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  appleBadgeText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700' as const,
-  },
-  googleBadgeText: {
-    color: Colors.primary,
-    fontSize: 15,
-    fontWeight: '800' as const,
-  },
-  socialButtonText: {
-    fontSize: 15,
-    color: Colors.text,
-    fontWeight: '700' as const,
   },
   registerRow: {
     flexDirection: 'row',

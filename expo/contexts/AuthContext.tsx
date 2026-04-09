@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/types';
 import { Session } from '@supabase/supabase-js';
 import { translateError } from '@/utils/translateError';
-import { normalizeEmail, signInWithAppleNative, signInWithRetry } from '@/utils/auth';
+import { normalizeEmail, signInWithRetry } from '@/utils/auth';
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -85,9 +85,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     mutationFn: async ({ email, password }: { email: string; password: string }) => signInWithRetry(email, password),
   });
 
-  const appleLoginMutation = useMutation({
-    mutationFn: async () => signInWithAppleNative(),
-  });
 
   const registerMutation = useMutation({
     mutationFn: async ({ email, password, username }: { email: string; password: string; username: string }) => {
@@ -159,7 +156,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     initializing,
     isLoggedIn: !!session?.user,
     loginMutation,
-    appleLoginMutation,
     registerMutation,
     resetPasswordMutation,
     logout,
@@ -170,7 +166,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     profileQuery.refetch,
     initializing,
     loginMutation,
-    appleLoginMutation,
     registerMutation,
     resetPasswordMutation,
     logout,
