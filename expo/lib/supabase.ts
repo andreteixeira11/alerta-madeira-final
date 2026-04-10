@@ -2,6 +2,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 
+type RuntimeExtraConfig = {
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  expoPublicSupabaseUrl?: string;
+  expoPublicSupabaseAnonKey?: string;
+  EXPO_PUBLIC_SUPABASE_URL?: string;
+  EXPO_PUBLIC_SUPABASE_ANON_KEY?: string;
+};
+
+type RuntimeManifestConfig = {
+  extra?: RuntimeExtraConfig;
+};
+
 type SupabaseConfigDiagnostics = {
   url: string;
   keyPrefix: string;
@@ -84,21 +97,36 @@ function maskKey(value: string): string {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
+function getRuntimeExtraConfig(): RuntimeExtraConfig {
+  const constantsWithManifests = Constants as typeof Constants & {
+    manifest?: RuntimeManifestConfig | null;
+    manifest2?: RuntimeManifestConfig | null;
+  };
+
+  return constantsWithManifests.expoConfig?.extra
+    ?? constantsWithManifests.manifest2?.extra
+    ?? constantsWithManifests.manifest?.extra
+    ?? {};
+}
+
 function getValidatedSupabaseConfig(): { url: string; anonKey: string; diagnostics: SupabaseConfigDiagnostics } {
-  const rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  const rawAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+  const extra = getRuntimeExtraConfig();
+  const rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
+    ?? extra.supabaseUrl
+    ?? extra.expoPublicSupabaseUrl
+    ?? extra.EXPO_PUBLIC_SUPABASE_URL;
+  const rawAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+    ?? extra.supabaseAnonKey
+    ?? extra.expoPublicSupabaseAnonKey
+    ?? extra.EXPO_PUBLIC_SUPABASE_ANON_KEY;
   const url = rawUrl?.trim() ?? '';
   const anonKey = rawAnonKey?.trim() ?? '';
-  const extra = (Constants.expoConfig?.extra ?? {}) as {
-    supabaseUrl?: string;
-    supabaseAnonKey?: string;
-  };
-  const extraUrl = extra.supabaseUrl?.trim() ?? '';
-  const extraAnonKey = extra.supabaseAnonKey?.trim() ?? '';
+  const extraUrl = (extra.supabaseUrl ?? extra.expoPublicSupabaseUrl ?? extra.EXPO_PUBLIC_SUPABASE_URL)?.trim() ?? '';
+  const extraAnonKey = (extra.supabaseAnonKey ?? extra.expoPublicSupabaseAnonKey ?? extra.EXPO_PUBLIC_SUPABASE_ANON_KEY)?.trim() ?? '';
   const jwtRole = getJwtRole(anonKey);
   const isUrlValid = /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url);
   const isKeyJwtLike = anonKey.split('.').length === 3;
-  const extraMatchesProcessEnv = extraUrl === url && extraAnonKey === anonKey;
+  const extraMatchesProcessEnv = !extraUrl || !extraAnonKey || (extraUrl === url && extraAnonKey === anonKey);
 
   const diagnostics: SupabaseConfigDiagnostics = {
     url,
@@ -115,7 +143,7 @@ function getValidatedSupabaseConfig(): { url: string; anonKey: string; diagnosti
   console.log('[Supabase] Runtime config diagnostics:', diagnostics);
 
   if (typeof rawUrl !== 'string' || typeof rawAnonKey !== 'string') {
-    throw new Error('Missing Supabase public environment variables in process.env.');
+    throw new Error('Missing Supabase public environment variables in Expo runtime.');
   }
 
   if (!url || !anonKey) {
@@ -140,10 +168,6 @@ function getValidatedSupabaseConfig(): { url: string; anonKey: string; diagnosti
 
   if (jwtRole !== null && jwtRole !== 'anon') {
     throw new Error(`Unexpected Supabase client key role: ${jwtRole}`);
-  }
-
-  if (!extraUrl || !extraAnonKey) {
-    throw new Error('Supabase public environment variables are missing from Expo runtime config.');
   }
 
   if (!extraMatchesProcessEnv) {
