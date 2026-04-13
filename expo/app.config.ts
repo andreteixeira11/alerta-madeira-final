@@ -16,6 +16,7 @@ function getRequiredEnv(name: 'EXPO_PUBLIC_SUPABASE_URL' | 'EXPO_PUBLIC_SUPABASE
 
 const supabaseUrl = getRequiredEnv('EXPO_PUBLIC_SUPABASE_URL');
 const supabaseAnonKey = getRequiredEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY');
+const oneSignalAppId = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID?.trim() ?? '';
 
 if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(supabaseUrl)) {
   throw new Error('[app.config] EXPO_PUBLIC_SUPABASE_URL is not a valid Supabase project URL');
@@ -69,6 +70,9 @@ const config: ExpoConfig = {
   extra: {
     supabaseUrl,
     supabaseAnonKey,
+    oneSignalAppId,
+    expoPublicOneSignalAppId: oneSignalAppId,
+    EXPO_PUBLIC_ONESIGNAL_APP_ID: oneSignalAppId,
   },
 };
 

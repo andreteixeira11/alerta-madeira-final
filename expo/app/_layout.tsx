@@ -2,56 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { trpc, trpcClient } from '@/lib/trpc';
-import { supabase } from '@/lib/supabase';
 import Colors from '@/constants/colors';
+import { initializeNotifications, registerPushToken } from '@/lib/notifications';
 import { t } from '@/utils/i18n';
-
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
-
-async function registerPushToken(userId?: string) {
-  if (Platform.OS === 'web') return;
-  try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== 'granted') {
-      console.log('[Push] Permission not granted');
-      return;
-    }
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: '5d7588ad-f2e0-4179-b74b-30f2fcb4d42f',
-    });
-    console.log('[Push] Token:', tokenData.data);
-    if (userId && tokenData.data) {
-      await supabase.from('push_tokens').upsert({
-        user_id: userId,
-        token: tokenData.data,
-        platform: Platform.OS,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'token' });
-      console.log('[Push] Token saved to Supabase');
-    }
-  } catch (e: any) {
-    console.log('[Push] Registration error:', e.message);
-  }
-}
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -127,6 +83,7 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
+    initializeNotifications();
     void SplashScreen.hideAsync();
   }, []);
 

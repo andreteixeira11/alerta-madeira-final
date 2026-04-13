@@ -1,8 +1,8 @@
 import * as z from "zod";
 import { createTRPCRouter, publicProcedure } from "../create-context";
 
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID;
-const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY;
+const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID?.trim();
+const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY?.trim();
 
 export const onesignalRouter = createTRPCRouter({
   sendNotification: publicProcedure
@@ -19,6 +19,11 @@ export const onesignalRouter = createTRPCRouter({
       if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
         console.log("[OneSignal] Missing ONESIGNAL_APP_ID or ONESIGNAL_REST_API_KEY");
         throw new Error("OneSignal não está configurado. Verifique as variáveis de ambiente.");
+      }
+
+      if (!/^[0-9a-fA-F-]{36}$/.test(ONESIGNAL_APP_ID)) {
+        console.log("[OneSignal] Invalid app id format:", ONESIGNAL_APP_ID);
+        throw new Error("ONESIGNAL_APP_ID inválido.");
       }
 
       const payload: Record<string, unknown> = {
