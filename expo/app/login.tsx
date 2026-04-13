@@ -14,7 +14,8 @@ import * as Haptics from 'expo-haptics';
 import { t } from '@/utils/i18n';
 
 const REMEMBER_KEY = 'remember_email';
-const REMEMBER_PASS_KEY = 'remember_pass';
+const LEGACY_REMEMBER_PASS_KEY = 'remember_pass';
+const PASSWORD_AUTOFILL_HINT = '••••••••';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -27,16 +28,16 @@ export default function LoginScreen() {
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
-    void AsyncStorage.getItem(REMEMBER_KEY).then((saved) => {
-      if (saved) {
-        setEmail(saved);
+    void Promise.all([
+      AsyncStorage.getItem(REMEMBER_KEY),
+      AsyncStorage.removeItem(LEGACY_REMEMBER_PASS_KEY),
+    ]).then(([savedEmail]) => {
+      if (savedEmail) {
+        setEmail(savedEmail);
         setRememberMe(true);
-        void AsyncStorage.getItem(REMEMBER_PASS_KEY).then((pass) => {
-          if (pass) {
-            setPassword(pass);
-          }
-        });
       }
+    }).catch((error: unknown) => {
+      console.log('[Login] Failed to restore remembered email:', error);
     });
   }, []);
 
@@ -66,10 +67,10 @@ export default function LoginScreen() {
       await loginMutation.mutateAsync({ email: normalizedEmail, password });
       if (rememberMe) {
         await AsyncStorage.setItem(REMEMBER_KEY, normalizedEmail);
-        await AsyncStorage.setItem(REMEMBER_PASS_KEY, password);
+        await AsyncStorage.removeItem(LEGACY_REMEMBER_PASS_KEY);
       } else {
         await AsyncStorage.removeItem(REMEMBER_KEY);
-        await AsyncStorage.removeItem(REMEMBER_PASS_KEY);
+        await AsyncStorage.removeItem(LEGACY_REMEMBER_PASS_KEY);
       }
       setStatusMessage(t('auth.loginSuccess'));
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -133,7 +134,7 @@ export default function LoginScreen() {
             <Lock size={18} color={Colors.textMuted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder={t('auth.password')}
+              placeholder={rememberMe && !password ? PASSWORD_AUTOFILL_HINT : t('auth.password')}
               placeholderTextColor={Colors.textMuted}
               value={password}
               onChangeText={(value) => {
