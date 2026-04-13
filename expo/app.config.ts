@@ -41,14 +41,14 @@ const config: ExpoConfig = {
   },
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'alerta.madeira',
+    bundleIdentifier: 'app.alerta.madeira',
   },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#ffffff',
     },
-    package: 'alerta.madeira',
+    package: 'app.alerta.madeira',
   },
   web: {
     favicon: './assets/images/favicon.png',
