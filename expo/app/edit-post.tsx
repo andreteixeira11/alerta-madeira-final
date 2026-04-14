@@ -55,11 +55,22 @@ export default function EditPostScreen() {
       if (useCamera) {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert('Permissão', 'Precisamos de acesso à câmara');
+          Alert.alert(
+            'Permissão de câmara',
+            'Permita o acesso à câmara para tirar fotografias da ocorrência antes de atualizar a publicação.'
+          );
           return;
         }
         result = await ImagePicker.launchCameraAsync(options);
       } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert(
+            'Permissão de fototeca',
+            'Permita o acesso à fototeca para escolher fotografias da ocorrência antes de atualizar a publicação.'
+          );
+          return;
+        }
         result = await ImagePicker.launchImageLibraryAsync(options);
       }
       if (!result.canceled && result.assets[0]) {

@@ -280,7 +280,10 @@ export default function AdminScreen() {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permissão Necessária', 'Precisamos de acesso à galeria para carregar imagens.');
+        Alert.alert(
+          'Permissão de fototeca',
+          'Permita o acesso à fototeca para escolher imagens que serão usadas em anúncios e comunicações dentro da app.'
+        );
         return;
       }
 

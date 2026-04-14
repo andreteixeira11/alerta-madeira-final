@@ -83,7 +83,10 @@ export default function CreatePostScreen() {
       if (Platform.OS !== 'web') {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permissão', 'Precisamos de acesso à localização');
+          Alert.alert(
+            'Permissão de localização',
+            'Permita o acesso à localização para associar a sua posição atual à ocorrência que está a submeter.'
+          );
           return;
         }
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -135,11 +138,22 @@ export default function CreatePostScreen() {
       if (useCamera) {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert('Permissão', 'Precisamos de acesso à câmara');
+          Alert.alert(
+            'Permissão de câmara',
+            'Permita o acesso à câmara para tirar fotografias das ocorrências antes de as submeter.'
+          );
           return;
         }
         result = await ImagePicker.launchCameraAsync(options);
       } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert(
+            'Permissão de fototeca',
+            'Permita o acesso à fototeca para escolher fotografias das ocorrências antes de as submeter.'
+          );
+          return;
+        }
         result = await ImagePicker.launchImageLibraryAsync(options);
       }
 
