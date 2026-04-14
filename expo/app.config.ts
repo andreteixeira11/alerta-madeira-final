@@ -43,6 +43,11 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'app.alerta.madeira',
+    infoPlist: {
+      NSCameraUsageDescription: 'A câmara é usada para tirar fotografias das ocorrências e para atualizar a sua fotografia de perfil.',
+      NSPhotoLibraryUsageDescription: 'A galeria é usada para escolher fotografias das ocorrências e para alterar a sua fotografia de perfil.',
+      NSPhotoLibraryAddUsageDescription: 'A biblioteca de fotografias pode ser usada para guardar imagens relacionadas com ocorrências quando essa funcionalidade estiver disponível.',
+    },
   },
   android: {
     adaptiveIcon: {

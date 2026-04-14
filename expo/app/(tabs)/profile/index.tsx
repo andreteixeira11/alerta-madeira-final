@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import {
   LogOut, Shield, MessageCircle, Heart, FileText, ChevronRight, Edit3,
-  Bell, Settings, Save, X, Lock, Camera, ChevronDown, BookOpen,
+  Bell, Settings, Save, X, Lock, Camera, ChevronDown, BookOpen, TriangleAlert,
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadImageToSupabase } from '@/utils/uploadImage';
 import * as Haptics from 'expo-haptics';
 import { t } from '@/utils/i18n';
+import { trpc } from '@/lib/trpc';
 
 const NOTIF_PREFS_KEY = 'notification_preferences';
 
@@ -37,6 +38,7 @@ export default function ProfileScreen() {
   const { user, profile, isAdmin, logout, refetchProfile } = useAuth();
   const { data: stats } = useProfileStats(user?.id);
   const { data: userPosts, isLoading: postsLoading } = useUserPosts(user?.id);
+  const deleteAccountMutation = trpc.account.deleteMyAccount.useMutation();
 
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -193,6 +195,31 @@ export default function ProfileScreen() {
       },
     ]);
   }, [logout]);
+
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(t('profile.deleteAccountTitle'), `${t('profile.deleteAccountBody')}\n\n${t('profile.deleteAccountDataWarning')}`, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('profile.deleteAccountConfirm'),
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(t('profile.deleteAccountTitle'), t('profile.deleteAccountInProgress'));
+          deleteAccountMutation.mutate(undefined, {
+            onSuccess: async () => {
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(t('common.success'), t('profile.deleteAccountSuccess'));
+              await logout();
+            },
+            onError: (error: Error) => {
+              console.log('[Profile] Delete account error:', error.message);
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert(t('common.error'), error.message || t('profile.deleteAccountError'));
+            },
+          });
+        },
+      },
+    ]);
+  }, [deleteAccountMutation, logout]);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -425,6 +452,24 @@ export default function ProfileScreen() {
           )}
         </View>
       )}
+
+      <TouchableOpacity
+        style={styles.deleteAccountButton}
+        onPress={handleDeleteAccount}
+        activeOpacity={0.8}
+        disabled={deleteAccountMutation.isPending}
+        testID="delete-account-btn"
+      >
+        {deleteAccountMutation.isPending ? (
+          <ActivityIndicator size="small" color={Colors.danger} />
+        ) : (
+          <TriangleAlert size={20} color={Colors.danger} />
+        )}
+        <View style={styles.deleteAccountContent}>
+          <Text style={styles.deleteAccountText}>{t('profile.deleteAccount')}</Text>
+          <Text style={styles.deleteAccountSubtext}>{t('profile.deleteAccountDataWarning')}</Text>
+        </View>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.logoutButton}
@@ -740,6 +785,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700' as const,
     color: Colors.white,
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#F5C2C7',
+  },
+  deleteAccountContent: {
+    flex: 1,
+  },
+  deleteAccountText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.danger,
+  },
+  deleteAccountSubtext: {
+    marginTop: 3,
+    fontSize: 12,
+    color: '#9F3A46',
   },
   logoutButton: {
     flexDirection: 'row',

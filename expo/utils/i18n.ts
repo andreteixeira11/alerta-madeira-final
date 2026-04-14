@@ -96,6 +96,14 @@ type TranslationKey =
   | 'profile.logoutBody'
   | 'profile.logout'
   | 'profile.newName'
+  | 'profile.deleteAccount'
+  | 'profile.deleteAccountTitle'
+  | 'profile.deleteAccountBody'
+  | 'profile.deleteAccountConfirm'
+  | 'profile.deleteAccountSuccess'
+  | 'profile.deleteAccountError'
+  | 'profile.deleteAccountInProgress'
+  | 'profile.deleteAccountDataWarning'
   | 'error.unknown'
   | 'error.invalidCredentials'
   | 'error.emailNotConfirmed'
@@ -212,6 +220,14 @@ const translations: TranslationDictionary = {
     'profile.logoutBody': 'Tem a certeza que deseja sair?',
     'profile.logout': 'Sair',
     'profile.newName': 'Novo nome',
+    'profile.deleteAccount': 'Eliminar conta',
+    'profile.deleteAccountTitle': 'Eliminar conta permanentemente',
+    'profile.deleteAccountBody': 'Esta ação apaga a sua conta, publicações, comentários e tokens de notificações. Não pode ser desfeita.',
+    'profile.deleteAccountConfirm': 'Sim, eliminar conta',
+    'profile.deleteAccountSuccess': 'A sua conta foi eliminada com sucesso.',
+    'profile.deleteAccountError': 'Não foi possível eliminar a conta.',
+    'profile.deleteAccountInProgress': 'A eliminar conta...',
+    'profile.deleteAccountDataWarning': 'Os dados associados serão removidos de forma permanente.',
     'error.unknown': 'Ocorreu um erro desconhecido.',
     'error.invalidCredentials': 'Credenciais inválidas. Verifique o email e a palavra-passe.',
     'error.emailNotConfirmed': 'O email ainda não foi confirmado.',
@@ -325,6 +341,14 @@ const translations: TranslationDictionary = {
     'profile.logoutBody': 'Are you sure you want to sign out?',
     'profile.logout': 'Sign out',
     'profile.newName': 'New name',
+    'profile.deleteAccount': 'Delete account',
+    'profile.deleteAccountTitle': 'Delete account permanently',
+    'profile.deleteAccountBody': 'This action deletes your account, posts, comments, and notification tokens. It cannot be undone.',
+    'profile.deleteAccountConfirm': 'Yes, delete account',
+    'profile.deleteAccountSuccess': 'Your account was deleted successfully.',
+    'profile.deleteAccountError': 'Unable to delete the account.',
+    'profile.deleteAccountInProgress': 'Deleting account...',
+    'profile.deleteAccountDataWarning': 'Associated data will be permanently removed.',
     'error.unknown': 'An unknown error occurred.',
     'error.invalidCredentials': 'Invalid credentials. Check your email and password.',
     'error.emailNotConfirmed': 'Your email has not been confirmed yet.',
@@ -438,6 +462,14 @@ const translations: TranslationDictionary = {
     'profile.logoutBody': '¿Seguro que quieres cerrar sesión?',
     'profile.logout': 'Salir',
     'profile.newName': 'Nuevo nombre',
+    'profile.deleteAccount': 'Eliminar cuenta',
+    'profile.deleteAccountTitle': 'Eliminar cuenta permanentemente',
+    'profile.deleteAccountBody': 'Esta acción elimina tu cuenta, publicaciones, comentarios y tokens de notificaciones. No se puede deshacer.',
+    'profile.deleteAccountConfirm': 'Sí, eliminar cuenta',
+    'profile.deleteAccountSuccess': 'Tu cuenta se eliminó correctamente.',
+    'profile.deleteAccountError': 'No se pudo eliminar la cuenta.',
+    'profile.deleteAccountInProgress': 'Eliminando cuenta...',
+    'profile.deleteAccountDataWarning': 'Los datos asociados se eliminarán permanentemente.',
     'error.unknown': 'Ocurrió un error desconocido.',
     'error.invalidCredentials': 'Credenciales inválidas. Verifica tu correo y contraseña.',
     'error.emailNotConfirmed': 'Tu correo aún no ha sido confirmado.',
@@ -551,6 +583,14 @@ const translations: TranslationDictionary = {
     'profile.logoutBody': 'Voulez-vous vraiment vous déconnecter ?',
     'profile.logout': 'Déconnexion',
     'profile.newName': 'Nouveau nom',
+    'profile.deleteAccount': 'Supprimer le compte',
+    'profile.deleteAccountTitle': 'Supprimer le compte définitivement',
+    'profile.deleteAccountBody': 'Cette action supprime votre compte, vos publications, vos commentaires et vos jetons de notification. Elle est irréversible.',
+    'profile.deleteAccountConfirm': 'Oui, supprimer le compte',
+    'profile.deleteAccountSuccess': 'Votre compte a été supprimé avec succès.',
+    'profile.deleteAccountError': 'Impossible de supprimer le compte.',
+    'profile.deleteAccountInProgress': 'Suppression du compte...',
+    'profile.deleteAccountDataWarning': 'Les données associées seront supprimées définitivement.',
     'error.unknown': 'Une erreur inconnue est survenue.',
     'error.invalidCredentials': 'Identifiants invalides. Vérifiez votre e-mail et votre mot de passe.',
     'error.emailNotConfirmed': "Votre e-mail n'a pas encore été confirmé.",
