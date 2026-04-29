@@ -8,7 +8,10 @@
     "ios": {
       "bundleIdentifier": "app.alerta.madeira",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "A câmara é usada para tirar fotografias de ocorrências (por exemplo, um incêndio ou acidente) para anexar ao relatório e submeter na app.",
+        "NSPhotoLibraryUsageDescription": "A galeria é usada para escolher fotografias já existentes (por exemplo, uma imagem de perigo captada antes) para anexar ao relatório e submeter na app.",
+        "NSPhotoLibraryAddUsageDescription": "A biblioteca de fotografias é usada para guardar imagens associadas às suas ocorrências (por exemplo, uma cópia da foto enviada no relatório) para consulta posterior."
       }
     },
     "owner": "7diasweb",

@@ -45,6 +45,11 @@ const config: ExpoConfig = {
     supportsTablet: false,
     bundleIdentifier: 'app.alerta.madeira',
     buildNumber: "4",
+    infoPlist: {
+      NSCameraUsageDescription: 'The camera is used to take photos of incidents (for example, a fire or road accident) so you can attach the image to your incident report and submit it in the app.',
+      NSPhotoLibraryUsageDescription: 'The photo library is used to select existing photos (for example, a hazard photo you took earlier) so you can attach the image to your incident report and submit it in the app.',
+      NSPhotoLibraryAddUsageDescription: 'The photo library is used to save images related to your reports (for example, a copy of the photo submitted with an incident) so you can reference them later.',
+    },
   },
 
   android: {

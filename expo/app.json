@@ -20,9 +20,9 @@
       "bundleIdentifier": "app.alerta.madeira",
       "buildNumber": "4",
       "infoPlist": {
-        "NSCameraUsageDescription": "To let you take photos of incidents (for example, an accident scene or a fire) so you can attach them to an incident report and submit it in the app.",
-        "NSPhotoLibraryUsageDescription": "o let you pick existing photos from your library (for example, a photo of a hazard you already took) so you can attach them to an incident report and submit it in the app.",
-        "NSPhotoLibraryAddUsageDescription": "To save images related to your reported incidents to your device (for example, a copy of the incident photo) so you can reference them later."
+        "NSCameraUsageDescription": "The camera is used to take photos of incidents (for example, a fire or road accident) so you can attach the image to your incident report and submit it in the app.",
+        "NSPhotoLibraryUsageDescription": "The photo library is used to select existing photos (for example, a hazard photo you took earlier) so you can attach the image to your incident report and submit it in the app.",
+        "NSPhotoLibraryAddUsageDescription": "The photo library is used to save images related to your reports (for example, a copy of the photo submitted with an incident) so you can reference them later."
       }
     },
 

@@ -39,6 +39,12 @@
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>The camera is used to take photos of incidents (for example, a fire or road accident) so you can attach the image to your incident report and submit it in the app.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>The photo library is used to save images related to your reports (for example, a copy of the photo submitted with an incident) so you can reference them later.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>The photo library is used to select existing photos (for example, a hazard photo you took earlier) so you can attach the image to your incident report and submit it in the app.</string>
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
