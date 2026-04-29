@@ -5,28 +5,40 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rork-app",
+    "scheme": "alertamadeira",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.alerta.madeira"
+      "bundleIdentifier": "app.alerta.madeira",
+      "buildNumber": "4",
+      "infoPlist": {
+        "NSCameraUsageDescription": "To let you take photos of incidents (for example, an accident scene or a fire) so you can attach them to an incident report and submit it in the app.",
+        "NSPhotoLibraryUsageDescription": "o let you pick existing photos from your library (for example, a photo of a hazard you already took) so you can attach them to an incident report and submit it in the app.",
+        "NSPhotoLibraryAddUsageDescription": "To save images related to your reported incidents to your device (for example, a copy of the incident photo) so you can reference them later."
+      }
     },
+
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "alerta.madeira"
+      "package": "com.alertamadeira.app",
+      "versionCode": 1
     },
+
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
+
     "plugins": [
       [
         "expo-router",
@@ -35,8 +47,10 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "onesignal-expo-plugin"
     ],
+
     "experiments": {
       "typedRoutes": true
     }

@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "ce1a7b01-7bf9-4b7a-819e-1f158818feda"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "app.alerta.madeira",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "owner": "7diasweb",
+    "android": {
+      "package": "alerta.madeira"
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
