@@ -1,22 +1,44 @@
 {
   "expo": {
+    "name": "Alerta Madeira",
+    "slug": "alertamadeira",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./expo/assets/images/icon.png",
+    "scheme": "alertamadeira",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./expo/assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "extra": {
+      "supabaseUrl": "https://cefplgeamddmvshxbpbw.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZnBsZ2VhbWRkbXZzaHhicGJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5MDk2MDIsImV4cCI6MjA4NjQ4NTYwMn0.d-upVDqBbITGg0y6UVArnXp1I62LaZ2UIM2iXQaAiwc",
+      "oneSignalAppId": "9844ae56-b44c-4f87-95d7-ea2e73dad8d7",
       "eas": {
         "projectId": "ce1a7b01-7bf9-4b7a-819e-1f158818feda"
       }
     },
     "ios": {
       "bundleIdentifier": "app.alerta.madeira",
+      "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "A câmara é usada para tirar fotografias de ocorrências (por exemplo, um incêndio ou acidente) para anexar ao relatório e submeter na app.",
         "NSPhotoLibraryUsageDescription": "A galeria é usada para escolher fotografias já existentes (por exemplo, uma imagem de perigo captada antes) para anexar ao relatório e submeter na app.",
-        "NSPhotoLibraryAddUsageDescription": "A biblioteca de fotografias é usada para guardar imagens associadas às suas ocorrências (por exemplo, uma cópia da foto enviada no relatório) para consulta posterior."
+        "NSPhotoLibraryAddUsageDescription": "A biblioteca de fotografias é usada para guardar imagens associadas às suas ocorrências (por exemplo, uma cópia da foto enviada no relatório) para consulta posterior.",
+        "NSLocationWhenInUseUsageDescription": "A localização é usada quando cria uma ocorrência para associar a posição aproximada do incidente (por exemplo, o local de um acidente ou incêndio) ao relatório submetido na app."
       }
     },
     "owner": "7diasweb",
     "android": {
-      "package": "alerta.madeira"
+      "package": "alerta.madeira",
+      "adaptiveIcon": {
+        "foregroundImage": "./expo/assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "plugins": [
       "expo-asset"

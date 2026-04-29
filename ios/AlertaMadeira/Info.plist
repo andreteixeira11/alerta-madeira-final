@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>alerta-madeira-final</string>
+    <string>Alerta Madeira</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -27,24 +27,19 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
+          <string>alertamadeira</string>
           <string>app.alerta.madeira</string>
         </array>
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>4</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
-    <key>NSCameraUsageDescription</key>
-    <string>The camera is used to take photos of incidents (for example, a fire or road accident) so you can attach the image to your incident report and submit it in the app.</string>
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>The photo library is used to save images related to your reports (for example, a copy of the photo submitted with an incident) so you can reference them later.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>The photo library is used to select existing photos (for example, a hazard photo you took earlier) so you can attach the image to your incident report and submit it in the app.</string>
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
@@ -52,6 +47,14 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>NSCameraUsageDescription</key>
+    <string>A câmara é usada para tirar fotografias de ocorrências (por exemplo, um incêndio ou acidente) para anexar ao relatório e submeter na app.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>A localização é usada quando cria uma ocorrência para associar a posição aproximada do incidente (por exemplo, o local de um acidente ou incêndio) ao relatório submetido na app.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>A biblioteca de fotografias é usada para guardar imagens associadas às suas ocorrências (por exemplo, uma cópia da foto enviada no relatório) para consulta posterior.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>A galeria é usada para escolher fotografias já existentes (por exemplo, uma imagem de perigo captada antes) para anexar ao relatório e submeter na app.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>
@@ -68,11 +71,9 @@
     <array>
       <string>UIInterfaceOrientationPortrait</string>
       <string>UIInterfaceOrientationPortraitUpsideDown</string>
-      <string>UIInterfaceOrientationLandscapeLeft</string>
-      <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UIUserInterfaceStyle</key>
-    <string>Light</string>
+    <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
   </dict>
