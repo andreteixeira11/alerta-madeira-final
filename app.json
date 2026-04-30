@@ -7,7 +7,7 @@
     "icon": "./expo/assets/images/icon.png",
     "scheme": "alertamadeira",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./expo/assets/images/splash-icon.png",
       "resizeMode": "contain",

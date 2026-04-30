@@ -33,7 +33,7 @@ const config: ExpoConfig = {
   icon: './assets/images/icon.png',
   scheme: 'rork-app',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: true,
+  newArchEnabled: false,
 
   splash: {
     image: './assets/images/splash-icon.png',

@@ -56,7 +56,7 @@
     <key>NSPhotoLibraryUsageDescription</key>
     <string>A galeria é usada para escolher fotografias já existentes (por exemplo, uma imagem de perigo captada antes) para anexar ao relatório e submeter na app.</string>
     <key>RCTNewArchEnabled</key>
-    <true/>
+    <false/>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
