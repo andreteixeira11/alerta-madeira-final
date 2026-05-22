@@ -3,6 +3,8 @@ import type { ExpoConfig } from 'expo/config';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';
 const oneSignalAppId = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID?.trim() ?? '';
+const rorkApiBaseUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL?.trim() ?? '';
+const rorkFunctionsUrl = process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL?.trim() ?? '';
 
 function validateSupabaseUrl(url: string) {
   if (!url) return;
@@ -90,6 +92,10 @@ const config: ExpoConfig = {
     supabaseUrl,
     supabaseAnonKey,
     oneSignalAppId,
+    rorkApiBaseUrl,
+    rorkFunctionsUrl,
+    EXPO_PUBLIC_RORK_API_BASE_URL: rorkApiBaseUrl,
+    EXPO_PUBLIC_RORK_FUNCTIONS_URL: rorkFunctionsUrl,
 
     eas: {
       projectId: "c54bf538-c087-47a3-a011-28d949d86587"
