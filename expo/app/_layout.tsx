@@ -1,12 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import React, { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { trpc, trpcClient } from '@/lib/trpc';
 import Colors from '@/constants/colors';
 import { initializeNotifications, registerPushToken } from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
 import { t } from '@/utils/i18n';
 
 void SplashScreen.preventAutoHideAsync();
@@ -29,7 +31,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     if (!isLoggedIn && !inAuthGroup && !inAdminGroup && !inPublicGroup) {
       router.replace('/login' as any);
-    } else if (isLoggedIn && inAuthGroup) {
+    } else if (isLoggedIn && inAuthGroup && seg !== 'reset-password') {
       if (isAdmin) {
         router.replace('/admin' as any);
       } else {
@@ -54,6 +56,42 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayoutNav() {
+  const router = useRouter();
+
+  // Listen for deep links when the app is already open (fallback: Supabase magic link)
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', async (event: { url: string }) => {
+      console.log('[DeepLink] Received URL while app is open:', event.url);
+      if (event.url?.includes('reset-password') || event.url?.includes('type=recovery')) {
+        // Supabase magic link: extract fragment, establish session, then navigate.
+        try {
+          const fragment = event.url.includes('#') ? event.url.split('#')[1] : null;
+          if (fragment) {
+            const params = new URLSearchParams(fragment);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            if (accessToken && refreshToken) {
+              const { error } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              if (!error) {
+                router.replace({ pathname: '/reset-password', params: { verified: 'true' } } as any);
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('[DeepLink] Failed to process recovery link:', e);
+        }
+        // If processing failed, still navigate so the user sees an error.
+        router.replace({ pathname: '/reset-password', params: {} } as any);
+      }
+    });
+
+    return () => sub.remove();
+  }, [router]);
+
   return (
     <Stack
       screenOptions={{

@@ -7,33 +7,45 @@ import { useRouter, Stack } from 'expo-router';
 import { KeyRound, Mail, ArrowLeft } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
-import { trpc } from '@/lib/trpc';
+import { supabase } from '@/lib/supabase';
 import { t } from '@/utils/i18n';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
-
-  const sendCodeMutation = trpc.email.sendVerificationCode.useMutation();
+  const [isSending, setIsSending] = useState(false);
 
   const handleSendCode = useCallback(async () => {
     if (!email.trim()) {
       Alert.alert(t('common.error'), t('auth.enterEmail'));
       return;
     }
+
+    setIsSending(true);
     try {
-      await sendCodeMutation.mutateAsync({
-        email: email.trim(),
-        type: 'password_reset',
-      });
-      router.push({
+      // Supabase native: sends a 6-digit recovery code to the user's email.
+      // Works in production — no custom backend needed.
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+
+      if (error) {
+        console.log('[ForgotPassword] Supabase reset error:', error.message);
+        Alert.alert(t('common.error'), translateError(error));
+        return;
+      }
+
+      console.log('[ForgotPassword] Recovery email sent to:', email.trim());
+      // Navigate to the verification screen with the password_reset type.
+      router.replace({
         pathname: '/verify-email',
         params: { email: email.trim(), type: 'password_reset' },
       } as any);
-    } catch (error: any) {
-      Alert.alert(t('common.error'), translateError(error));
+    } catch (err: any) {
+      console.log('[ForgotPassword] Send error:', err?.message);
+      Alert.alert(t('common.error'), translateError(err));
+    } finally {
+      setIsSending(false);
     }
-  }, [email, sendCodeMutation, router]);
+  }, [email, router]);
 
   return (
     <KeyboardAvoidingView
@@ -70,13 +82,13 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.resetBtn, sendCodeMutation.isPending && styles.btnDisabled]}
+          style={[styles.resetBtn, isSending && styles.btnDisabled]}
           onPress={handleSendCode}
-          disabled={sendCodeMutation.isPending}
+          disabled={isSending}
           activeOpacity={0.85}
           testID="forgot-submit"
         >
-          {sendCodeMutation.isPending ? (
+          {isSending ? (
             <ActivityIndicator color={Colors.white} />
           ) : (
             <Text style={styles.resetBtnText}>{t('auth.sendCode')}</Text>
@@ -128,9 +140,10 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: Colors.textSecondary,
-    marginTop: 4,
+    marginTop: 6,
     textAlign: 'center',
     paddingHorizontal: 20,
+    lineHeight: 20,
   },
   inputContainer: {
     flexDirection: 'row',

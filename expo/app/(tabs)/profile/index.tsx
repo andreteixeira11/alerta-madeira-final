@@ -210,7 +210,7 @@ export default function ProfileScreen() {
               Alert.alert(t('common.success'), t('profile.deleteAccountSuccess'));
               await logout();
             },
-            onError: (error: Error) => {
+            onError: (error: any) => {
               console.log('[Profile] Delete account error:', error.message);
               void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
               Alert.alert(t('common.error'), error.message || t('profile.deleteAccountError'));

@@ -4,50 +4,21 @@ import {
   Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { KeyRound, Lock, ArrowLeft, Eye, EyeOff, CheckCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { KeyRound, Lock, Eye, EyeOff } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
 import { supabase } from '@/lib/supabase';
-import { useMutation } from '@tanstack/react-query';
-import { trpc } from '@/lib/trpc';
 import { t } from '@/utils/i18n';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const { email, verified, code: resetCode } = useLocalSearchParams<{ email: string; verified: string; code: string }>();
+  const { verified } = useLocalSearchParams<{ email: string; verified: string }>();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  const resetPasswordMutation = trpc.email.resetPassword.useMutation();
-
-  const resetMutation = useMutation({
-    mutationFn: async ({ userEmail, newPassword, otpCode }: { userEmail: string; newPassword: string; otpCode: string }) => {
-      console.log('[ResetPassword] Resetting password for:', userEmail);
-      
-      try {
-        await resetPasswordMutation.mutateAsync({
-          email: userEmail,
-          code: otpCode,
-          newPassword,
-        });
-        return true;
-      } catch (err: any) {
-        console.log('[ResetPassword] Server reset error:', err.message);
-        
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData?.session) {
-          const { error } = await supabase.auth.updateUser({ password: newPassword });
-          if (error) throw error;
-          return true;
-        }
-        
-        throw new Error(err.message || t('auth.loginTemporarilyUnavailable'));
-      }
-    },
-  });
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleReset = useCallback(async () => {
     if (!password.trim()) {
@@ -63,22 +34,67 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (verified !== 'true' || !resetCode) {
-      Alert.alert(t('common.error'), t('auth.verificationIncomplete'));
-      return;
-    }
-
+    setIsUpdating(true);
     try {
-      await resetMutation.mutateAsync({ userEmail: email || '', newPassword: password, otpCode: resetCode });
+      // verifyOtp({ type: 'recovery' }) already established a session on the
+      // previous screen. We just update the user's password with that session.
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        console.log('[ResetPassword] No active recovery session:', sessionError?.message);
+        Alert.alert(t('common.error'), t('auth.invalidResetLink'));
+        setIsUpdating(false);
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+
+      if (updateError) {
+        console.log('[ResetPassword] updateUser error:', updateError.message);
+        Alert.alert(t('common.error'), translateError(updateError));
+        setIsUpdating(false);
+        return;
+      }
+
+      // Sign out so the user logs in with the new password.
+      await supabase.auth.signOut();
+
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(t('common.success'), t('auth.passwordUpdated'), [
+
+      Alert.alert(t('common.success'), t('auth.resetPasswordSuccess'), [
         { text: t('common.ok'), onPress: () => router.replace('/login' as any) },
       ]);
-    } catch (error: any) {
+    } catch (err: any) {
+      console.log('[ResetPassword] Exception:', err?.message);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(t('common.error'), translateError(error));
+      Alert.alert(t('common.error'), translateError(err));
+    } finally {
+      setIsUpdating(false);
     }
-  }, [password, confirmPassword, verified, email, resetCode, resetMutation, router]);
+  }, [password, confirmPassword, router]);
+
+  // If the user lands here without a verified recovery session, send them back.
+  if (!verified) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.centeredContent}>
+          <View style={styles.errorCircle}>
+            <KeyRound size={32} color={Colors.primary} />
+          </View>
+          <Text style={styles.errorTitle}>{t('common.error')}</Text>
+          <Text style={styles.errorMessage}>{t('auth.invalidResetLink')}</Text>
+          <TouchableOpacity
+            style={styles.backToForgotBtn}
+            onPress={() => router.replace('/forgot-password' as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.backToForgotText}>{t('auth.forgotPassword')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -88,16 +104,12 @@ export default function ResetPasswordScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.content}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.replace('/login' as any)}>
-          <ArrowLeft size={22} color={Colors.text} />
+          <KeyRound size={22} color={Colors.text} />
         </TouchableOpacity>
 
         <View style={styles.heroSection}>
           <View style={styles.iconCircle}>
             <KeyRound size={28} color={Colors.white} />
-          </View>
-          <View style={styles.verifiedBadge}>
-            <CheckCircle size={14} color={Colors.success} />
-            <Text style={styles.verifiedText}>{t('auth.emailVerified')}</Text>
           </View>
           <Text style={styles.title}>{t('auth.newPassword')}</Text>
           <Text style={styles.subtitle}>{t('auth.resetSubtitle')}</Text>
@@ -134,13 +146,13 @@ export default function ResetPasswordScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.resetBtn, resetMutation.isPending && styles.btnDisabled]}
+            style={[styles.resetBtn, isUpdating && styles.btnDisabled]}
             onPress={handleReset}
-            disabled={resetMutation.isPending}
+            disabled={isUpdating}
             activeOpacity={0.85}
             testID="reset-submit"
           >
-            {resetMutation.isPending ? (
+            {isUpdating ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.resetBtnText}>{t('auth.newPassword')}</Text>
@@ -161,6 +173,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 28,
     justifyContent: 'center',
+  },
+  centeredContent: {
+    flex: 1,
+    paddingHorizontal: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backBtn: {
     position: 'absolute' as const,
@@ -185,21 +203,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  verifiedText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.success,
-  },
   title: {
     fontSize: 24,
     fontWeight: '800' as const,
@@ -209,6 +212,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     marginTop: 4,
+  },
+  errorCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFF5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 10,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  backToForgotBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 28,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backToForgotText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: Colors.white,
   },
   form: {
     gap: 14,

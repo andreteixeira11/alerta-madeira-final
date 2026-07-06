@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { Post, PostWithCounts, Category, Comment, Ad, UserProfile, REACTION_MAP, FuelPrice, JuntaFreguesia } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { trpcClient } from '@/lib/trpc';
 
 const FUEL_STORAGE_KEY = 'fuel_prices_data';
 
@@ -799,41 +798,30 @@ export function useSendPushNotification() {
       let recipientsCount = 0;
 
       try {
-        console.log('[Push] Sending via OneSignal...');
-        const onesignalResult = await trpcClient.onesignal.sendNotification.mutate({
-          title,
-          body,
-          url: linkUrl || undefined,
-        });
-        recipientsCount = onesignalResult.recipients ?? 0;
-        console.log('[Push] OneSignal sent to', recipientsCount, 'recipients');
-      } catch (onesignalErr: any) {
-        console.log('[Push] OneSignal error:', onesignalErr.message);
-        console.log('[Push] Falling back to Expo push...');
-        try {
-          const { data: tokens } = await supabase
-            .from('push_tokens')
-            .select('token');
-          recipientsCount = tokens?.length ?? 0;
-          if (tokens && tokens.length > 0) {
-            const messages = tokens.map(t => ({
-              to: t.token,
-              sound: 'default' as const,
-              title,
-              body,
-              data: { type: 'admin_notification', url: linkUrl || null },
-            }));
-            const response = await fetch('https://exp.host/--/api/v2/push/send', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(messages),
-            });
-            const result = await response.json();
-            console.log('[Push] Expo fallback result:', JSON.stringify(result));
-          }
-        } catch (expoErr: any) {
-          console.log('[Push] Expo fallback error:', expoErr.message);
+        const { data: tokens } = await supabase
+          .from('push_tokens')
+          .select('token');
+        recipientsCount = tokens?.length ?? 0;
+        if (tokens && tokens.length > 0) {
+          const messages = tokens.map(t => ({
+            to: t.token,
+            sound: 'default' as const,
+            title,
+            body,
+            data: { type: 'admin_notification', url: linkUrl || null },
+          }));
+          const response = await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(messages),
+          });
+          const result = await response.json();
+          console.log('[Push] Expo Push result:', JSON.stringify(result));
+        } else {
+          console.log('[Push] No push tokens registered in Supabase');
         }
+      } catch (expoErr: any) {
+        console.log('[Push] Expo Push error:', expoErr.message);
       }
 
       const { error } = await supabase

@@ -8,25 +8,26 @@ import { ShieldCheck, ArrowLeft, RotateCcw } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
-import { trpc } from '@/lib/trpc';
+import { supabase } from '@/lib/supabase';
 import { t } from '@/utils/i18n';
 
 const CODE_LENGTH = 6;
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
-  const { email, type } = useLocalSearchParams<{ email: string; type: 'email_verification' | 'password_reset' }>();
+  const { email, type } = useLocalSearchParams<{
+    email: string;
+    type: 'email_verification' | 'password_reset';
+  }>();
   const verificationType = type || 'email_verification';
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(60);
+  const [isResending, setIsResending] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  const verifyMutation = trpc.email.verifyCode.useMutation();
-  const sendCodeMutation = trpc.email.sendVerificationCode.useMutation();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -93,20 +94,36 @@ export default function VerifyEmailScreen() {
       return;
     }
 
+    const userEmail = (email || '').trim();
+    if (!userEmail) {
+      Alert.alert(t('common.error'), t('auth.enterEmail'));
+      return;
+    }
+
     setIsVerifying(true);
     try {
-      await verifyMutation.mutateAsync({
-        email: email || '',
-        code: fullCode,
-        type: verificationType,
+      // Supabase native OTP verification — works in production, no custom backend.
+      const { error } = await supabase.auth.verifyOtp({
+        email: userEmail,
+        token: fullCode,
+        type: 'recovery',
       });
+
+      if (error) {
+        console.log('[VerifyEmail] verifyOtp error:', error.message);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        shake();
+        Alert.alert(t('common.error'), translateError(error));
+        return;
+      }
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       if (verificationType === 'password_reset') {
+        // verifyOtp with type 'recovery' establishes a session — go to reset screen.
         router.replace({
           pathname: '/reset-password',
-          params: { email, verified: 'true', code: fullCode },
+          params: { email: userEmail, verified: 'true' },
         } as any);
       } else {
         Alert.alert(t('common.success'), t('auth.emailVerifiedSuccess'), [
@@ -116,29 +133,47 @@ export default function VerifyEmailScreen() {
     } catch (error: any) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       shake();
+      console.log('[VerifyEmail] Exception:', error?.message);
       Alert.alert(t('common.error'), translateError(error));
     } finally {
       setIsVerifying(false);
     }
-  }, [code, email, verificationType, verifyMutation, router, shake]);
+  }, [code, email, verificationType, router, shake]);
 
   const handleResend = useCallback(async () => {
-    if (resendCooldown > 0) return;
+    if (resendCooldown > 0 || isResending) return;
 
+    const userEmail = (email || '').trim();
+    if (!userEmail) {
+      Alert.alert(t('common.error'), t('auth.enterEmail'));
+      return;
+    }
+
+    setIsResending(true);
     try {
-      await sendCodeMutation.mutateAsync({
-        email: email || '',
-        type: verificationType,
-      });
+      if (verificationType === 'password_reset') {
+        const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email: userEmail,
+        });
+        if (error) throw error;
+      }
+
       setResendCooldown(60);
       setCode(Array(CODE_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(t('auth.codeSentTitle'), t('auth.codeSentBody'));
     } catch (error: any) {
+      console.log('[VerifyEmail] Resend error:', error?.message);
       Alert.alert(t('common.error'), translateError(error));
+    } finally {
+      setIsResending(false);
     }
-  }, [resendCooldown, email, verificationType, sendCodeMutation]);
+  }, [resendCooldown, isResending, email, verificationType]);
 
   const isPasswordReset = verificationType === 'password_reset';
 
@@ -205,12 +240,12 @@ export default function VerifyEmailScreen() {
         <TouchableOpacity
           style={[styles.resendBtn, resendCooldown > 0 && styles.resendBtnDisabled]}
           onPress={handleResend}
-          disabled={resendCooldown > 0 || sendCodeMutation.isPending}
+          disabled={resendCooldown > 0 || isResending}
           activeOpacity={0.7}
         >
           <RotateCcw size={16} color={resendCooldown > 0 ? Colors.textMuted : Colors.primary} />
           <Text style={[styles.resendText, resendCooldown > 0 && styles.resendTextDisabled]}>
-            {sendCodeMutation.isPending
+            {isResending
               ? t('auth.sending')
               : resendCooldown > 0
                 ? t('auth.resendCodeIn', { seconds: resendCooldown })

@@ -31,6 +31,9 @@ function getRuntimeExtraConfig(): RuntimeExtraConfig {
     ?? {};
 }
 
+/** Cloudflare Worker URL — the always-available production backend. */
+const PRODUCTION_BACKEND_URL = 'https://5vauuuks7oqh966ybva0n-backend.rork.app';
+
 const getBaseUrl = (): string => {
   const extra = getRuntimeExtraConfig();
   const url = process.env.EXPO_PUBLIC_RORK_API_BASE_URL
@@ -39,7 +42,7 @@ const getBaseUrl = (): string => {
     ?? process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL
     ?? extra.rorkFunctionsUrl
     ?? extra.EXPO_PUBLIC_RORK_FUNCTIONS_URL
-    ?? '';
+    ?? PRODUCTION_BACKEND_URL;
 
   return url.trim().replace(/\/$/, '');
 };

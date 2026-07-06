@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import * as z from "zod";
 
@@ -6,19 +7,124 @@ import { createTRPCRouter, publicProcedure } from "../create-context";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail = process.env.RESEND_FROM_EMAIL || "Alerta Madeira <geral@alertamadeira.com>";
 
-const otpStore = new Map<string, { code: string; expiresAt: number }>();
+const SUPABASE_URL = (process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? "") || "https://cefplgeamddmvshxbpbw.supabase.co";
+
+// ---------------------------------------------------------------------------
+// Fully stateless token system (no in-memory store — survives Worker cold
+// starts and cross-instance routing in Cloudflare Workers)
+// ---------------------------------------------------------------------------
+const VERIFICATION_TOKEN_TTL_MS = 10 * 60 * 1000; // 10 min — matches OTP lifetime
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;        // 15 min — reset window
+
+function base64UrlEncode(buf: ArrayBuffer): string {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function base64UrlDecode(str: string): ArrayBuffer {
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (str.length % 4) str += "=";
+  return Uint8Array.from(atob(str), (c) => c.charCodeAt(0)).buffer;
+}
+
+function getSecretKey(): string {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
+}
+
+async function importHmacKey(usage: "sign" | "verify"): Promise<CryptoKey> {
+  const secret = getSecretKey();
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    [usage],
+  );
+}
+
+async function signPayload(payload: string): Promise<string> {
+  const key = await importHmacKey("sign");
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return base64UrlEncode(sig);
+}
+
+async function verifySignature(payload: string, sigB64: string): Promise<boolean> {
+  try {
+    const key = await importHmacKey("verify");
+    const sig = base64UrlDecode(sigB64);
+    return crypto.subtle.verify("HMAC", key, sig, new TextEncoder().encode(payload));
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Verification token: {email}:{otp}:{type}:{expiresAt}  →  sig.payload
+// Signed with SUPABASE_SERVICE_ROLE_KEY so it survives across Worker instances.
+// ---------------------------------------------------------------------------
+async function createVerificationToken(
+  email: string,
+  otp: string,
+  type: "email_verification" | "password_reset",
+): Promise<string> {
+  const expiresAt = Date.now() + VERIFICATION_TOKEN_TTL_MS;
+  const payload = `${email.toLowerCase()}:${otp}:${type}:${expiresAt}`;
+  const sig = await signPayload(payload);
+  return `${sig}.${btoa(payload)}`;
+}
+
+function parseVerificationToken(token: string): {
+  email: string;
+  otp: string;
+  type: "email_verification" | "password_reset";
+  expiresAt: number;
+  sig: string;
+} | null {
+  try {
+    const dotIdx = token.indexOf(".");
+    if (dotIdx === -1) return null;
+    const sig = token.slice(0, dotIdx);
+    const payloadB64 = token.slice(dotIdx + 1);
+    const payload = atob(payloadB64);
+    const parts = payload.split(":");
+    if (parts.length !== 4) return null;
+    const [email, otp, type, expiresAtStr] = parts;
+    const expiresAt = parseInt(expiresAtStr, 10);
+    if (!expiresAt || !email || !otp || (type !== "email_verification" && type !== "password_reset")) {
+      return null;
+    }
+    return { email, otp, type: type as "email_verification" | "password_reset", expiresAt, sig };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reset token (separate, longer-lived): {email}:{expiresAt}  →  sig.expiresAt
+// ---------------------------------------------------------------------------
+async function createResetToken(email: string): Promise<string> {
+  const expiresAt = Date.now() + RESET_TOKEN_TTL_MS;
+  const payload = `${email.toLowerCase()}:${expiresAt}`;
+  const sig = await signPayload(payload);
+  return `${sig}.${expiresAt}`;
+}
+
+async function verifyResetToken(email: string, token: string): Promise<boolean> {
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+
+  const [sigB64, expiresAtStr] = parts;
+  const expiresAt = parseInt(expiresAtStr, 10);
+  if (!expiresAt || Date.now() > expiresAt) return false;
+
+  const payload = `${email.toLowerCase()}:${expiresAt}`;
+  return verifySignature(payload, sigB64);
+}
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-function cleanExpiredOtps() {
-  const now = Date.now();
-  for (const [key, value] of otpStore.entries()) {
-    if (value.expiresAt < now) {
-      otpStore.delete(key);
-    }
-  }
 }
 
 export const emailRouter = createTRPCRouter({
@@ -30,13 +136,10 @@ export const emailRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      cleanExpiredOtps();
-
       const code = generateOtp();
-      const expiresAt = Date.now() + 10 * 60 * 1000;
-      const storeKey = `${input.type}:${input.email.toLowerCase()}`;
 
-      otpStore.set(storeKey, { code, expiresAt });
+      // Create a stateless signed token so verifyCode works across Worker instances
+      const verificationToken = await createVerificationToken(input.email, code, input.type);
 
       console.log("[OTP] Generated code for", input.email, "type:", input.type);
 
@@ -99,7 +202,7 @@ export const emailRouter = createTRPCRouter({
         }
 
         console.log("[OTP] Email sent, id:", data?.id);
-        return { success: true };
+        return { success: true, verificationToken };
       } catch (err: any) {
         console.log("[OTP] Exception:", err.message);
         throw new Error(err.message || "Erro ao enviar email");
@@ -112,35 +215,57 @@ export const emailRouter = createTRPCRouter({
         email: z.string().email(),
         code: z.string().length(6),
         type: z.enum(["email_verification", "password_reset"]),
+        verificationToken: z.string().min(10),
       }),
     )
     .mutation(async ({ input }) => {
-      cleanExpiredOtps();
+      console.log("[OTP] Verifying code for", input.email, "type:", input.type);
 
-      const storeKey = `${input.type}:${input.email.toLowerCase()}`;
-      const stored = otpStore.get(storeKey);
-
-      if (!stored) {
-        console.log("[OTP] No code found for", storeKey);
+      // Validate the stateless verification token
+      const parsed = parseVerificationToken(input.verificationToken);
+      if (!parsed) {
+        console.log("[OTP] Invalid verification token format");
         throw new Error("Código expirado ou inválido. Solicite um novo código.");
       }
 
-      if (stored.expiresAt < Date.now()) {
-        otpStore.delete(storeKey);
-        console.log("[OTP] Code expired for", storeKey);
+      if (parsed.email !== input.email.toLowerCase()) {
+        console.log("[OTP] Token email mismatch");
+        throw new Error("Código expirado ou inválido. Solicite um novo código.");
+      }
+
+      if (parsed.type !== input.type) {
+        console.log("[OTP] Token type mismatch");
+        throw new Error("Código expirado ou inválido. Solicite um novo código.");
+      }
+
+      if (Date.now() > parsed.expiresAt) {
+        console.log("[OTP] Verification token expired for", input.email);
         throw new Error("Código expirado. Solicite um novo código.");
       }
 
-      if (stored.code !== input.code) {
-        console.log("[OTP] Invalid code for", storeKey);
+      // Verify HMAC signature
+      const dotIdx = input.verificationToken.indexOf(".");
+      const payloadB64 = input.verificationToken.slice(dotIdx + 1);
+      const payload = atob(payloadB64);
+      const valid = await verifySignature(payload, parsed.sig);
+      if (!valid) {
+        console.log("[OTP] Invalid signature for", input.email);
+        throw new Error("Código expirado ou inválido. Solicite um novo código.");
+      }
+
+      // Check OTP
+      if (parsed.otp !== input.code) {
+        console.log("[OTP] Invalid code for", input.email);
         throw new Error("Código incorreto. Tente novamente.");
       }
 
-      if (input.type !== 'password_reset') {
-        otpStore.delete(storeKey);
+      if (input.type === "password_reset") {
+        const resetToken = await createResetToken(input.email);
+        console.log("[OTP] Code verified for", input.email, "- reset token created");
+        return { success: true, verified: true, resetToken };
       }
-      console.log("[OTP] Code verified for", storeKey);
 
+      console.log("[OTP] Code verified for", input.email);
       return { success: true, verified: true };
     }),
 
@@ -217,43 +342,31 @@ export const emailRouter = createTRPCRouter({
     .input(
       z.object({
         email: z.string().email(),
-        code: z.string().length(6),
+        resetToken: z.string().min(20),
         newPassword: z.string().min(6),
       }),
     )
     .mutation(async ({ input }) => {
       console.log("[ResetPassword] Attempting password reset for:", input.email);
 
-      cleanExpiredOtps();
-      const storeKey = `password_reset:${input.email.toLowerCase()}`;
-      const stored = otpStore.get(storeKey);
-
-      if (!stored) {
-        console.log("[ResetPassword] No OTP found for", storeKey);
+      // Validate stateless token (no in-memory store needed)
+      const valid = await verifyResetToken(input.email, input.resetToken);
+      if (!valid) {
+        console.log("[ResetPassword] Invalid or expired reset token for", input.email);
         throw new Error("Código expirado ou inválido. Solicite um novo código.");
       }
 
-      if (stored.expiresAt < Date.now()) {
-        otpStore.delete(storeKey);
-        throw new Error("Código expirado. Solicite um novo código.");
-      }
+      console.log("[ResetPassword] Reset token verified, updating password");
 
-      if (stored.code !== input.code) {
-        console.log("[ResetPassword] Invalid code for", storeKey);
-        throw new Error("Código incorreto. Tente novamente.");
-      }
-
-      otpStore.delete(storeKey);
-      console.log("[ResetPassword] OTP verified, updating password");
-
-      const { createClient } = await import("@supabase/supabase-js");
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const supabaseUrl = SUPABASE_URL;
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? '';
 
       if (!serviceRoleKey) {
-        console.log("[ResetPassword] SUPABASE_SERVICE_ROLE_KEY not set");
+        console.log("[ResetPassword] Missing SUPABASE_SERVICE_ROLE_KEY");
         throw new Error("Erro de configuração do servidor. Contacte o administrador.");
       }
+
+      console.log("[ResetPassword] Using Supabase URL:", supabaseUrl);
 
       const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
         auth: {
@@ -262,47 +375,99 @@ export const emailRouter = createTRPCRouter({
         },
       });
 
-      try {
-        const { data: userData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-
-        if (!listError && userData) {
-          const user = userData.users?.find((u: any) => u.email === input.email);
-          if (!user) {
-            throw new Error("Utilizador não encontrado.");
-          }
-
-          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-            password: input.newPassword,
-          });
-
-          if (updateError) {
-            console.log("[ResetPassword] Admin update error:", updateError.message);
-            throw new Error("Erro ao atualizar palavra-passe.");
-          }
-
-          console.log("[ResetPassword] Password updated via admin API");
-          return { success: true };
-        }
-      } catch (adminErr: any) {
-        console.log("[ResetPassword] Admin API not available:", adminErr.message);
-      }
+      // Use GoTrue admin REST API directly with email filter for reliable user lookup.
+      // listUsers() paginates and may miss users beyond the first page.
+      let userId: string | null = null;
 
       try {
-        const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(input.email, {
-          redirectTo: `${supabaseUrl}/auth/v1/callback`,
+        const filterParam = encodeURIComponent(`email=eq.${input.email.toLowerCase()}`);
+        const adminUrl = `${supabaseUrl}/auth/v1/admin/users?filter=${filterParam}`;
+
+        console.log("[ResetPassword] Looking up user via admin API");
+
+        const userResponse = await fetch(adminUrl, {
+          headers: {
+            Authorization: `Bearer ${serviceRoleKey}`,
+            apikey: serviceRoleKey,
+          },
         });
-        if (resetError) {
-          console.log("[ResetPassword] Supabase reset email error:", resetError.message);
+
+        if (userResponse.ok) {
+          const users: Array<{ id: string; email: string }> = await userResponse.json();
+          const foundUser = users.find(
+            (u) => u.email?.toLowerCase() === input.email.toLowerCase()
+          );
+
+          if (foundUser) {
+            userId = foundUser.id;
+            console.log("[ResetPassword] User found via admin REST API:", userId);
+          } else {
+            console.log("[ResetPassword] No user found with email:", input.email);
+            throw new Error("Utilizador não encontrado. Verifique o email e tente novamente.");
+          }
+        } else {
+          console.log("[ResetPassword] Admin REST API returned status:", userResponse.status);
         }
-      } catch (e: any) {
-        console.log("[ResetPassword] Reset email exception:", e.message);
+      } catch (restErr: any) {
+        console.log("[ResetPassword] Admin REST API error:", restErr.message);
+        // Fall through to listUsers as fallback
       }
 
-      console.log("[ResetPassword] Falling back to signIn + updateUser");
-      throw new Error(
-        "Não foi possível redefinir a palavra-passe automaticamente. " +
-        "Verifique o email enviado pelo sistema para concluir a redefinição."
-      );
+      // Fallback: try listUsers if REST API didn't return a user
+      if (!userId) {
+        try {
+          console.log("[ResetPassword] Falling back to listUsers");
+          let page = 1;
+          let found = false;
+
+          while (!found && page <= 10) {
+            const { data: userData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+              page,
+              perPage: 200,
+            });
+
+            if (listError || !userData) {
+              console.log("[ResetPassword] listUsers page", page, "error:", listError?.message);
+              break;
+            }
+
+            const user = userData.users?.find(
+              (u: any) => u.email?.toLowerCase() === input.email.toLowerCase()
+            );
+
+            if (user) {
+              userId = user.id;
+              found = true;
+              console.log("[ResetPassword] User found via listUsers page", page);
+            } else if ((userData.users?.length ?? 0) < 200) {
+              // No more pages
+              break;
+            } else {
+              page++;
+            }
+          }
+        } catch (listErr: any) {
+          console.log("[ResetPassword] listUsers fallback error:", listErr.message);
+        }
+      }
+
+      if (!userId) {
+        throw new Error(
+          "Utilizador não encontrado. Verifique o email e tente novamente."
+        );
+      }
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: input.newPassword,
+      });
+
+      if (updateError) {
+        console.log("[ResetPassword] Admin update error:", updateError.message);
+        throw new Error("Erro ao atualizar palavra-passe. Tente novamente.");
+      }
+
+      console.log("[ResetPassword] Password updated successfully for user:", userId);
+      return { success: true };
     }),
 
   sendBulkNotification: publicProcedure

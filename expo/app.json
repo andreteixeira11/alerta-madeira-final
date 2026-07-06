@@ -48,8 +48,7 @@
         }
       ],
       "expo-font",
-      "expo-web-browser",
-      "onesignal-expo-plugin"
+      "expo-web-browser"
     ],
 
     "experiments": {

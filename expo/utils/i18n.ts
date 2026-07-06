@@ -63,7 +63,13 @@ type TranslationKey =
   | 'auth.forgotPasswordTitle'
   | 'auth.forgotPasswordSubtitle'
   | 'auth.sendCode'
+  | 'auth.sendResetLink'
   | 'auth.enterEmail'
+  | 'auth.checkEmailTitle'
+  | 'auth.checkEmailBody'
+  | 'auth.processingResetLink'
+  | 'auth.invalidResetLink'
+  | 'auth.resetPasswordSuccess'
   | 'auth.adminTitle'
   | 'auth.adminSubtitle'
   | 'auth.adminLoginTitle'
@@ -187,7 +193,13 @@ const translations: TranslationDictionary = {
     'auth.forgotPasswordTitle': 'Recuperar Palavra-passe',
     'auth.forgotPasswordSubtitle': 'Enviaremos um código de verificação para o seu email.',
     'auth.sendCode': 'Enviar Código',
+    'auth.sendResetLink': 'Enviar Link de Recuperação',
     'auth.enterEmail': 'Insira o seu email.',
+    'auth.checkEmailTitle': 'Verifique o seu email',
+    'auth.checkEmailBody': 'Enviámos um link para redefinir a sua palavra-passe.\n\nAbra o email e clique no link para continuar.',
+    'auth.processingResetLink': 'A processar o link de redefinição...',
+    'auth.invalidResetLink': 'Link de redefinição inválido ou expirado. Solicite um novo.',
+    'auth.resetPasswordSuccess': 'Palavra-passe alterada com sucesso! Faça login com a nova palavra-passe.',
     'auth.adminTitle': 'Administração',
     'auth.adminSubtitle': 'Alerta Madeira · Backoffice',
     'auth.adminLoginTitle': 'Login de Administrador',
@@ -308,7 +320,13 @@ const translations: TranslationDictionary = {
     'auth.forgotPasswordTitle': 'Reset Password',
     'auth.forgotPasswordSubtitle': 'We will send a verification code to your email.',
     'auth.sendCode': 'Send Code',
+    'auth.sendResetLink': 'Send Reset Link',
     'auth.enterEmail': 'Enter your email.',
+    'auth.checkEmailTitle': 'Check your email',
+    'auth.checkEmailBody': 'We sent a link to reset your password.\n\nOpen the email and tap the link to continue.',
+    'auth.processingResetLink': 'Processing reset link...',
+    'auth.invalidResetLink': 'The reset link is invalid or expired. Please request a new one.',
+    'auth.resetPasswordSuccess': 'Password changed successfully! Sign in with your new password.',
     'auth.adminTitle': 'Administration',
     'auth.adminSubtitle': 'Alerta Madeira · Backoffice',
     'auth.adminLoginTitle': 'Administrator Login',
@@ -429,7 +447,13 @@ const translations: TranslationDictionary = {
     'auth.forgotPasswordTitle': 'Recuperar contraseña',
     'auth.forgotPasswordSubtitle': 'Te enviaremos un código de verificación a tu correo.',
     'auth.sendCode': 'Enviar código',
+    'auth.sendResetLink': 'Enviar enlace de recuperación',
     'auth.enterEmail': 'Introduce tu correo.',
+    'auth.checkEmailTitle': 'Revisa tu correo',
+    'auth.checkEmailBody': 'Enviamos un enlace para restablecer tu contraseña.\n\nAbre el correo y haz clic en el enlace para continuar.',
+    'auth.processingResetLink': 'Procesando enlace de restablecimiento...',
+    'auth.invalidResetLink': 'El enlace de restablecimiento no es válido o ha caducado. Solicita uno nuevo.',
+    'auth.resetPasswordSuccess': '¡Contraseña cambiada correctamente! Inicia sesión con tu nueva contraseña.',
     'auth.adminTitle': 'Administración',
     'auth.adminSubtitle': 'Alerta Madeira · Backoffice',
     'auth.adminLoginTitle': 'Acceso de administrador',
@@ -550,7 +574,13 @@ const translations: TranslationDictionary = {
     'auth.forgotPasswordTitle': 'Réinitialiser le mot de passe',
     'auth.forgotPasswordSubtitle': 'Nous enverrons un code de vérification à votre e-mail.',
     'auth.sendCode': 'Envoyer le code',
+    'auth.sendResetLink': 'Envoyer le lien de récupération',
     'auth.enterEmail': 'Saisissez votre e-mail.',
+    'auth.checkEmailTitle': 'Vérifiez votre e-mail',
+    'auth.checkEmailBody': 'Nous avons envoyé un lien pour réinitialiser votre mot de passe.\n\nOuvrez l\'e-mail et cliquez sur le lien pour continuer.',
+    'auth.processingResetLink': 'Traitement du lien de réinitialisation...',
+    'auth.invalidResetLink': 'Le lien de réinitialisation est invalide ou expiré. Veuillez en demander un nouveau.',
+    'auth.resetPasswordSuccess': 'Mot de passe changé avec succès ! Connectez-vous avec votre nouveau mot de passe.',
     'auth.adminTitle': 'Administration',
     'auth.adminSubtitle': 'Alerta Madeira · Backoffice',
     'auth.adminLoginTitle': 'Connexion administrateur',
