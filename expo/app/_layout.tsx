@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { trpc, trpcClient } from '@/lib/trpc';
 import Colors from '@/constants/colors';
-import { initializeNotifications, registerPushToken } from '@/lib/notifications';
+import { initializeNotifications, loginOneSignalUser, logoutOneSignalUser } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { t } from '@/utils/i18n';
 
@@ -45,10 +45,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoggedIn && user?.id && !pushRegistered.current) {
       pushRegistered.current = true;
-      void registerPushToken(user.id);
+      loginOneSignalUser(user.id);
     }
-    if (!isLoggedIn) {
+    if (!isLoggedIn && pushRegistered.current) {
       pushRegistered.current = false;
+      logoutOneSignalUser();
     }
   }, [isLoggedIn, user?.id]);
 

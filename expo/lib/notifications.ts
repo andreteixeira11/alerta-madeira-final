@@ -1,83 +1,90 @@
-import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { supabase } from '@/lib/supabase';
+import { OneSignal, LogLevel } from 'react-native-onesignal';
 
 let notificationsInitialized = false;
 
-/** EAS project ID — required by expo-notifications to mint push tokens. */
-function getProjectId(): string {
-  return (
-    Constants.easConfig?.projectId ??
-    'c54bf538-c087-47a3-a011-28d949d86587'
-  );
+/** OneSignal App ID from public env. */
+function getOneSignalAppId(): string {
+  return process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID?.trim() ?? '';
 }
 
+/**
+ * Initialize the OneSignal SDK. Safe to call on web (no-op) and
+ * when the native module is unavailable (graceful fallback).
+ */
 export function initializeNotifications(): void {
   if (notificationsInitialized) return;
-  notificationsInitialized = true;
+  if (Platform.OS === 'web') return;
 
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-
-  console.log('[Notifications] Initialized — Expo Push, projectId:', getProjectId());
-}
-
-export async function registerPushToken(userId?: string): Promise<string | null> {
-  if (Platform.OS === 'web') return null;
+  const appId = getOneSignalAppId();
+  if (!appId) {
+    console.log('[Notifications] Missing EXPO_PUBLIC_ONESIGNAL_APP_ID');
+    return;
+  }
 
   try {
-    const currentPermissions = await Notifications.getPermissionsAsync();
-    let finalStatus = currentPermissions.status;
+    notificationsInitialized = true;
 
-    if (finalStatus !== 'granted') {
-      const requestedPermissions = await Notifications.requestPermissionsAsync();
-      finalStatus = requestedPermissions.status;
-    }
+    OneSignal.Debug.setLogLevel(LogLevel.Warn);
+    OneSignal.initialize(appId);
 
-    if (finalStatus !== 'granted') {
-      console.log('[Notifications] Permission not granted');
-      return null;
-    }
+    // Request notification permission from the user
+    OneSignal.Notifications.requestPermission(true)
+      .then((granted: boolean) => {
+        console.log('[Notifications] Permission granted:', granted);
+      })
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.log('[Notifications] Permission request error:', msg);
+      });
 
-    const tokenResponse = await Notifications.getExpoPushTokenAsync({
-      projectId: getProjectId(),
+    // Handle notification clicks (app opened from notification)
+    OneSignal.Notifications.addEventListener('click', (event: unknown) => {
+      const e = event as { result?: { url?: string } };
+      console.log('[Notifications] Clicked, URL:', e?.result?.url ?? 'none');
     });
-    const pushToken = tokenResponse.data?.trim() ?? '';
 
-    if (!pushToken) {
-      console.log('[Notifications] Empty Expo push token received');
-      return null;
-    }
+    // Display notifications when app is in foreground
+    OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: unknown) => {
+      const e = event as {
+        preventDefault: () => void;
+        getNotification: () => { display: () => void };
+      };
+      e.preventDefault();
+      e.getNotification().display();
+    });
 
-    console.log('[Notifications] Expo push token acquired:', pushToken);
-
-    if (userId) {
-      const { error } = await supabase.from('push_tokens').upsert({
-        user_id: userId,
-        token: pushToken,
-        platform: Platform.OS,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'token' });
-
-      if (error) {
-        console.log('[Notifications] Failed to save push token:', error.message);
-      } else {
-        console.log('[Notifications] Push token saved to Supabase');
-      }
-    }
-
-    return pushToken;
+    console.log('[Notifications] OneSignal initialized, appId:', appId);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.log('[Notifications] Registration error:', message);
-    return null;
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log('[Notifications] Initialization error:', msg);
+    notificationsInitialized = false;
+  }
+}
+
+/**
+ * Login the OneSignal user with the Supabase user ID.
+ * This enables user-centric tracking and targeting in the OneSignal dashboard.
+ */
+export function loginOneSignalUser(userId: string): void {
+  if (!notificationsInitialized || Platform.OS === 'web') return;
+  try {
+    OneSignal.login(userId);
+    console.log('[Notifications] OneSignal login:', userId);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log('[Notifications] Login error:', msg);
+  }
+}
+
+/** Logout the OneSignal user (call on app sign-out). */
+export function logoutOneSignalUser(): void {
+  if (!notificationsInitialized || Platform.OS === 'web') return;
+  try {
+    OneSignal.logout();
+    console.log('[Notifications] OneSignal logout');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.log('[Notifications] Logout error:', msg);
   }
 }

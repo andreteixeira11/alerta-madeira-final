@@ -795,50 +795,39 @@ export function useSendPushNotification() {
 
   return useMutation({
     mutationFn: async ({ title, body, sentBy, linkUrl }: { title: string; body: string; sentBy: string; linkUrl?: string }) => {
-      let recipientsCount = 0;
-
-      try {
-        const { data: tokens } = await supabase
-          .from('push_tokens')
-          .select('token');
-        recipientsCount = tokens?.length ?? 0;
-        if (tokens && tokens.length > 0) {
-          const messages = tokens.map(t => ({
-            to: t.token,
-            sound: 'default' as const,
-            title,
-            body,
-            data: { type: 'admin_notification', url: linkUrl || null },
-          }));
-          const response = await fetch('https://exp.host/--/api/v2/push/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(messages),
-          });
-          const result = await response.json();
-          console.log('[Push] Expo Push result:', JSON.stringify(result));
-        } else {
-          console.log('[Push] No push tokens registered in Supabase');
-        }
-      } catch (expoErr: any) {
-        console.log('[Push] Expo Push error:', expoErr.message);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Não autenticado.');
       }
 
-      const { error } = await supabase
-        .from('admin_notifications')
-        .insert({
-          title,
-          body,
-          link_url: linkUrl || null,
-          sent_by: sentBy,
-          recipients_count: recipientsCount,
-        });
-
-      if (error) {
-        console.log('[Push] Log notification error:', error.message);
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL não configurado.');
       }
 
-      return { sent: recipientsCount };
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        },
+        body: JSON.stringify({ title, body, sentBy, url: linkUrl }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const msg = result?.error ?? `Erro ${response.status}`;
+        console.log('[Push] Edge function error:', msg);
+        throw new Error(msg);
+      }
+
+      const recipients = result.recipients ?? 0;
+      console.log('[Push] OneSignal sent to', recipients, 'recipients');
+
+      return { sent: recipients };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-notifications'] });

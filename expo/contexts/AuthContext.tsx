@@ -6,6 +6,7 @@ import { UserProfile } from '@/types';
 import { Session } from '@supabase/supabase-js';
 import { translateError } from '@/utils/translateError';
 import { normalizeEmail, signInWithRetry } from '@/utils/auth';
+import { logoutOneSignalUser } from '@/lib/notifications';
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -144,6 +145,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   });
 
   const logout = useCallback(async () => {
+    logoutOneSignalUser();
     await supabase.auth.signOut();
     queryClient.clear();
   }, [queryClient]);

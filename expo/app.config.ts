@@ -73,6 +73,12 @@ const config: ExpoConfig = {
     ],
     'expo-font',
     'expo-web-browser',
+    [
+      'onesignal-expo-plugin',
+      {
+        mode: 'production',
+      },
+    ],
   ],
 
   experiments: {
