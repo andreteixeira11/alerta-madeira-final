@@ -26,7 +26,7 @@ if (process.env.NODE_ENV === 'development') {
 const config: ExpoConfig = {
   name: 'Alerta Madeira',
   slug: 'alertamadeira',
-  version: '1.0.1',
+  version: '1.0.2',
 
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -43,7 +43,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'app.alerta.madeira',
-    buildNumber: "4",
+    buildNumber: "5",
     infoPlist: {
       NSCameraUsageDescription: 'The camera is used to take photos of incidents (for example, a fire or road accident) so you can attach the image to your incident report and submit it in the app.',
       NSPhotoLibraryUsageDescription: 'The photo library is used to select existing photos (for example, a hazard photo you took earlier) so you can attach the image to your incident report and submit it in the app.',

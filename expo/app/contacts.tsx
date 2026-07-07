@@ -8,7 +8,7 @@ import { ArrowLeft, Mail, Globe, Phone, MessageCircle, Send } from 'lucide-react
 import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
 import * as Haptics from 'expo-haptics';
-import { trpc } from '@/lib/trpc';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 
 export default function ContactsScreen() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function ContactsScreen() {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
 
-  const sendEmail = trpc.email.sendNotification.useMutation();
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const handleSubmit = useCallback(async () => {
     if (!subject.trim() || !email.trim() || !content.trim()) {
@@ -36,13 +36,13 @@ export default function ContactsScreen() {
     try {
       const messageBody = `Assunto: ${subject.trim()}\nTelemóvel: ${phone.trim() || 'Não indicado'}\nEmail: ${email.trim()}\n\nConteúdo:\n${content.trim()}`;
 
-      await sendEmail.mutateAsync({
+      await invokeEdgeFunction('send-email', {
         to: ['geral@alertamadeira.com'],
         subject: `Contacto App - ${subject.trim()}`,
         message: messageBody,
       });
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Sucesso', 'A sua mensagem foi enviada com sucesso! Entraremos em contacto brevemente.');
       setSubject('');
       setPhone('');
@@ -54,7 +54,7 @@ export default function ContactsScreen() {
     } finally {
       setSending(false);
     }
-  }, [subject, phone, email, content, sendEmail]);
+  }, [subject, phone, email, content]);
 
   return (
     <KeyboardAvoidingView

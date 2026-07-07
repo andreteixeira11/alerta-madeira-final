@@ -19,7 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadImageToSupabase } from '@/utils/uploadImage';
 import * as Haptics from 'expo-haptics';
 import { t } from '@/utils/i18n';
-import { trpc } from '@/lib/trpc';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 
 const NOTIF_PREFS_KEY = 'notification_preferences';
 
@@ -38,7 +38,7 @@ export default function ProfileScreen() {
   const { user, profile, isAdmin, logout, refetchProfile } = useAuth();
   const { data: stats } = useProfileStats(user?.id);
   const { data: userPosts, isLoading: postsLoading } = useUserPosts(user?.id);
-  const deleteAccountMutation = trpc.account.deleteMyAccount.useMutation();
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -202,24 +202,24 @@ export default function ProfileScreen() {
       {
         text: t('profile.deleteAccountConfirm'),
         style: 'destructive',
-        onPress: () => {
-          Alert.alert(t('profile.deleteAccountTitle'), t('profile.deleteAccountInProgress'));
-          deleteAccountMutation.mutate(undefined, {
-            onSuccess: async () => {
-              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert(t('common.success'), t('profile.deleteAccountSuccess'));
-              await logout();
-            },
-            onError: (error: any) => {
-              console.log('[Profile] Delete account error:', error.message);
-              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert(t('common.error'), error.message || t('profile.deleteAccountError'));
-            },
-          });
+        onPress: async () => {
+          setDeletingAccount(true);
+          try {
+            await invokeEdgeFunction('delete-account', {});
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert(t('common.success'), t('profile.deleteAccountSuccess'));
+            await logout();
+          } catch (error: any) {
+            console.log('[Profile] Delete account error:', error.message);
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(t('common.error'), error.message || t('profile.deleteAccountError'));
+          } finally {
+            setDeletingAccount(false);
+          }
         },
       },
     ]);
-  }, [deleteAccountMutation, logout]);
+  }, [logout]);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -457,10 +457,10 @@ export default function ProfileScreen() {
         style={styles.deleteAccountButton}
         onPress={handleDeleteAccount}
         activeOpacity={0.8}
-        disabled={deleteAccountMutation.isPending}
+        disabled={deletingAccount}
         testID="delete-account-btn"
       >
-        {deleteAccountMutation.isPending ? (
+        {deletingAccount ? (
           <ActivityIndicator size="small" color={Colors.danger} />
         ) : (
           <TriangleAlert size={20} color={Colors.danger} />

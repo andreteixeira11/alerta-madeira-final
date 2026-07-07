@@ -16,8 +16,8 @@ import { uploadImageToSupabase } from '@/utils/uploadImage';
 import { translateError } from '@/utils/translateError';
 import { MUNICIPALITIES } from '@/constants/municipalities';
 import { CONCELHOS } from '@/constants/freguesias';
-import { trpc } from '@/lib/trpc';
 import * as Haptics from 'expo-haptics';
+import { invokeEdgeFunction } from '@/lib/edge-functions';
 
 const CATEGORY_CONFIG: Record<Category, { title: string; placeholder: string }> = {
   ocorrencias: { title: 'Nova Ocorrência', placeholder: 'Descreva a ocorrência...' },
@@ -57,7 +57,6 @@ export default function CreatePostScreen() {
   const [sentToJunta, setSentToJunta] = useState(false);
   const [showJuntaSuccess, setShowJuntaSuccess] = useState(false);
 
-  const sendEmailMutation = trpc.email.sendNotification.useMutation();
   const { data: juntas } = useJuntas();
 
   const isAnomalias = (fixedCategory ?? category) === 'anomalias';
@@ -240,13 +239,13 @@ export default function CreatePostScreen() {
       }
       const message = `Anomalia reportada na freguesia de ${selectedFreguesia}.\n\nTítulo: ${title.trim()}\n\nDescrição: ${description.trim() || 'Sem descrição'}\n\nReportado por: ${profile?.name ?? 'Utilizador'}\nData: ${new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
 
-      await sendEmailMutation.mutateAsync({
+      await invokeEdgeFunction('send-email', {
         to: emails,
         subject: `APP ALERTA MADEIRA - Protege a comunidade! - Anomalia em ${selectedFreguesia}`,
         message,
       });
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSentToJunta(true);
       setShowJuntaSuccess(true);
     } catch (error: any) {
@@ -255,7 +254,7 @@ export default function CreatePostScreen() {
     } finally {
       setSendingToJunta(false);
     }
-  }, [title, description, selectedFreguesia, profile, sendEmailMutation]);
+  }, [title, description, selectedFreguesia, profile]);
 
   const handleSelectFreguesia = useCallback((freguesia: string) => {
     setSelectedFreguesia(freguesia);

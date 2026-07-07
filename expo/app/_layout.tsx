@@ -5,7 +5,6 @@ import * as Linking from 'expo-linking';
 import React, { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { trpc, trpcClient } from '@/lib/trpc';
 import Colors from '@/constants/colors';
 import { initializeNotifications, loginOneSignalUser, logoutOneSignalUser } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
@@ -127,16 +126,14 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AuthProvider>
-            <AuthGate>
-              <RootLayoutNav />
-            </AuthGate>
-          </AuthProvider>
-        </GestureHandlerRootView>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <QueryClientProvider client={queryClient}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AuthProvider>
+          <AuthGate>
+            <RootLayoutNav />
+          </AuthGate>
+        </AuthProvider>
+      </GestureHandlerRootView>
+    </QueryClientProvider>
   );
 }
