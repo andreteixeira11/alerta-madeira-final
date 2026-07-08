@@ -1,5 +1,16 @@
 import { Platform } from 'react-native';
-import { OneSignal, LogLevel } from 'react-native-onesignal';
+
+// Lazy-loaded OneSignal — avoids crashing on web where the native
+// module does not exist. The import only happens on native platforms.
+let OneSignalModule: typeof import('react-native-onesignal') | null = null;
+
+async function getOneSignal() {
+  if (Platform.OS === 'web') return null;
+  if (!OneSignalModule) {
+    OneSignalModule = await import('react-native-onesignal');
+  }
+  return OneSignalModule;
+}
 
 let notificationsInitialized = false;
 let initAttempted = false;
@@ -14,7 +25,7 @@ function getOneSignalAppId(): string {
  * when the native module is unavailable (graceful fallback).
  * Idempotent — safe to call multiple times.
  */
-export function initializeNotifications(): void {
+export async function initializeNotifications(): Promise<void> {
   if (initAttempted || Platform.OS === 'web') return;
   initAttempted = true;
 
@@ -25,12 +36,15 @@ export function initializeNotifications(): void {
   }
 
   try {
-    OneSignal.Debug.setLogLevel(LogLevel.Warn);
-    OneSignal.initialize(appId);
+    const OneSignal = await getOneSignal();
+    if (!OneSignal) return;
+
+    OneSignal.OneSignal.Debug.setLogLevel(OneSignal.LogLevel.Warn);
+    OneSignal.OneSignal.initialize(appId);
     notificationsInitialized = true;
 
     // Request notification permission (deferred, non-blocking)
-    OneSignal.Notifications.requestPermission(true)
+    OneSignal.OneSignal.Notifications.requestPermission(true)
       .then((granted: boolean) => {
         console.log('[Notifications] Permission granted:', granted);
       })
@@ -40,13 +54,13 @@ export function initializeNotifications(): void {
       });
 
     // Handle notification clicks (app opened from notification)
-    OneSignal.Notifications.addEventListener('click', (event: unknown) => {
+    OneSignal.OneSignal.Notifications.addEventListener('click', (event: unknown) => {
       const e = event as { result?: { url?: string } };
       console.log('[Notifications] Clicked, URL:', e?.result?.url ?? 'none');
     });
 
     // Display notifications when app is in foreground
-    OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: unknown) => {
+    OneSignal.OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: unknown) => {
       const e = event as {
         preventDefault: () => void;
         getNotification: () => { display: () => void };
@@ -67,10 +81,12 @@ export function initializeNotifications(): void {
  * Login the OneSignal user with the Supabase user ID.
  * This enables user-centric tracking and targeting in the OneSignal dashboard.
  */
-export function loginOneSignalUser(userId: string): void {
+export async function loginOneSignalUser(userId: string): Promise<void> {
   if (!notificationsInitialized || Platform.OS === 'web') return;
   try {
-    OneSignal.login(userId);
+    const OneSignal = await getOneSignal();
+    if (!OneSignal) return;
+    OneSignal.OneSignal.login(userId);
     console.log('[Notifications] OneSignal login:', userId);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
@@ -79,10 +95,12 @@ export function loginOneSignalUser(userId: string): void {
 }
 
 /** Logout the OneSignal user (call on app sign-out). */
-export function logoutOneSignalUser(): void {
+export async function logoutOneSignalUser(): Promise<void> {
   if (!notificationsInitialized || Platform.OS === 'web') return;
   try {
-    OneSignal.logout();
+    const OneSignal = await getOneSignal();
+    if (!OneSignal) return;
+    OneSignal.OneSignal.logout();
     console.log('[Notifications] OneSignal logout');
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);

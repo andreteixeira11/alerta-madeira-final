@@ -145,7 +145,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   });
 
   const logout = useCallback(async () => {
-    logoutOneSignalUser();
+    void logoutOneSignalUser();
     await supabase.auth.signOut();
     queryClient.clear();
   }, [queryClient]);

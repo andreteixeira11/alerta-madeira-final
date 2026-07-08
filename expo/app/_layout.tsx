@@ -44,11 +44,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoggedIn && user?.id && !pushRegistered.current) {
       pushRegistered.current = true;
-      loginOneSignalUser(user.id);
+      void loginOneSignalUser(user.id);
     }
     if (!isLoggedIn && pushRegistered.current) {
       pushRegistered.current = false;
-      logoutOneSignalUser();
+      void logoutOneSignalUser();
     }
   }, [isLoggedIn, user?.id]);
 
@@ -121,7 +121,7 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
-    initializeNotifications();
+    void initializeNotifications();
     void SplashScreen.hideAsync();
   }, []);
 
