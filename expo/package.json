@@ -55,8 +55,7 @@
     "resend": "^6.9.2",
     "superjson": "^2.2.6",
     "zod": "^4.3.6",
-    "zustand": "^5.0.2",
-    "@rork-ai/toolkit-sdk": "latest"
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
