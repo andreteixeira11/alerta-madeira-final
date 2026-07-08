@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { OneSignal, LogLevel } from 'react-native-onesignal';
 
 let notificationsInitialized = false;
+let initAttempted = false;
 
 /** OneSignal App ID from public env. */
 function getOneSignalAppId(): string {
@@ -11,31 +12,31 @@ function getOneSignalAppId(): string {
 /**
  * Initialize the OneSignal SDK. Safe to call on web (no-op) and
  * when the native module is unavailable (graceful fallback).
+ * Idempotent — safe to call multiple times.
  */
 export function initializeNotifications(): void {
-  if (notificationsInitialized) return;
-  if (Platform.OS === 'web') return;
+  if (initAttempted || Platform.OS === 'web') return;
+  initAttempted = true;
 
   const appId = getOneSignalAppId();
   if (!appId) {
-    console.log('[Notifications] Missing EXPO_PUBLIC_ONESIGNAL_APP_ID');
+    console.warn('[Notifications] Missing EXPO_PUBLIC_ONESIGNAL_APP_ID — skipping init');
     return;
   }
 
   try {
-    notificationsInitialized = true;
-
     OneSignal.Debug.setLogLevel(LogLevel.Warn);
     OneSignal.initialize(appId);
+    notificationsInitialized = true;
 
-    // Request notification permission from the user
+    // Request notification permission (deferred, non-blocking)
     OneSignal.Notifications.requestPermission(true)
       .then((granted: boolean) => {
         console.log('[Notifications] Permission granted:', granted);
       })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e);
-        console.log('[Notifications] Permission request error:', msg);
+        console.warn('[Notifications] Permission request error:', msg);
       });
 
     // Handle notification clicks (app opened from notification)
@@ -57,7 +58,7 @@ export function initializeNotifications(): void {
     console.log('[Notifications] OneSignal initialized, appId:', appId);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.log('[Notifications] Initialization error:', msg);
+    console.error('[Notifications] Initialization error:', msg);
     notificationsInitialized = false;
   }
 }
@@ -73,7 +74,7 @@ export function loginOneSignalUser(userId: string): void {
     console.log('[Notifications] OneSignal login:', userId);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.log('[Notifications] Login error:', msg);
+    console.warn('[Notifications] Login error:', msg);
   }
 }
 
@@ -85,6 +86,6 @@ export function logoutOneSignalUser(): void {
     console.log('[Notifications] OneSignal logout');
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.log('[Notifications] Logout error:', msg);
+    console.warn('[Notifications] Logout error:', msg);
   }
 }

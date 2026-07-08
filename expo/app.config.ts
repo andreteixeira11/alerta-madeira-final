@@ -32,7 +32,7 @@ const config: ExpoConfig = {
   icon: './assets/images/icon.png',
   scheme: 'alertamadeira',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: false,
+  newArchEnabled: true,
 
   splash: {
     image: './assets/images/splash-icon.png',
