@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
     if (!RESEND_API_KEY) {
       console.error("[send-email] Missing RESEND_API_KEY");
       return new Response(
-        JSON.stringify({ error: "Servidor de email não configurado." }),
+        JSON.stringify({ error: "Servidor de email nao configurado." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
 
     if (!token) {
       return new Response(
-        JSON.stringify({ error: "Não autenticado." }),
+        JSON.stringify({ error: "Nao autenticado." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
 
       if (!userResponse.ok) {
         return new Response(
-          JSON.stringify({ error: "Sessão inválida." }),
+          JSON.stringify({ error: "Sessao invalida." }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
@@ -79,7 +79,7 @@ Deno.serve(async (req: Request) => {
 
     if (!to || !Array.isArray(to) || to.length === 0 || !subject || !message) {
       return new Response(
-        JSON.stringify({ error: "Destinatário, assunto e mensagem são obrigatórios." }),
+        JSON.stringify({ error: "Destinatario, assunto e mensagem sao obrigatorios." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -103,7 +103,7 @@ Deno.serve(async (req: Request) => {
     <p style="color:#444;font-size:15px;line-height:1.6;white-space:pre-wrap;">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
   </td></tr>
   <tr><td style="background:#F9FAFB;padding:16px 24px;border-top:1px solid #f0f0f0;text-align:center;">
-    <p style="margin:0;color:#9CA3AF;font-size:11px;">Enviado pela app Alerta Madeira · Madeira, Portugal</p>
+    <p style="margin:0;color:#9CA3AF;font-size:11px;">Enviado pela app Alerta Madeira - Madeira, Portugal</p>
   </td></tr>
 </table>
 </td></tr>
@@ -164,3 +164,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+export {};

@@ -40,12 +40,12 @@ Deno.serve(async (req: Request) => {
     if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
       console.error("[register-device] Missing OneSignal credentials");
       return new Response(
-        JSON.stringify({ error: "OneSignal não configurado." }),
+        JSON.stringify({ error: "OneSignal nao configurado." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Try to verify the user (optional — registration can happen before login)
+    // Try to verify the user (optional - registration can happen before login)
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "").trim();
 
@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
           }
         }
       } catch {
-        // Non-fatal — proceed without auth
+        // Non-fatal - proceed without auth
       }
     }
 
@@ -75,7 +75,7 @@ Deno.serve(async (req: Request) => {
 
     if (!pushToken) {
       return new Response(
-        JSON.stringify({ error: "pushToken é obrigatório." }),
+        JSON.stringify({ error: "pushToken e obrigatorio." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -106,8 +106,7 @@ Deno.serve(async (req: Request) => {
 
     const addResult = await addResponse.json();
 
-    // If the device already exists (status 400 with "already registered"),
-    // update the existing record instead
+    // If the device already exists, update the existing record instead
     if (!addResponse.ok) {
       const errMsg = typeof addResult === "object" && addResult !== null
         ? JSON.stringify(addResult)
@@ -122,7 +121,7 @@ Deno.serve(async (req: Request) => {
         const searchData = await searchResponse.json();
 
         const existingPlayer = (searchData.players ?? []).find(
-          (p: { identifier?: string; id?: string }) => p.identifier === pushToken
+          (p: { identifier?: string; id?: string }) => p.identifier === pushToken,
         );
 
         if (existingPlayer?.id) {
@@ -178,3 +177,5 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+export {};
