@@ -1,107 +1,179 @@
 import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { supabase } from '@/lib/supabase';
 
-// Lazy-loaded OneSignal — avoids crashing on web where the native
-// module does not exist. The import only happens on native platforms.
-let OneSignalModule: typeof import('react-native-onesignal') | null = null;
+/**
+ * Notification system using expo-notifications + OneSignal REST API.
+ *
+ * The native react-native-onesignal TurboModule crashes on iOS 26 + RN 0.81
+ * (Hermes heap corruption from NSException in performVoidMethodInvocation).
+ * This module replaces it: expo-notifications gets the native push token,
+ * and a Supabase Edge Function registers the device with OneSignal via REST API.
+ * The OneSignal dashboard and send-notification edge function continue to work.
+ */
 
-async function getOneSignal() {
-  if (Platform.OS === 'web') return null;
-  if (!OneSignalModule) {
-    OneSignalModule = await import('react-native-onesignal');
-  }
-  return OneSignalModule;
-}
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
 let notificationsInitialized = false;
 let initAttempted = false;
+let currentPushToken: string | null = null;
 
-/** OneSignal App ID from public env. */
-function getOneSignalAppId(): string {
-  return process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID?.trim() ?? '';
-}
+// --- Foreground notification handler ---
+// Must be set at module level (before any await) so it's active immediately.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 /**
- * Initialize the OneSignal SDK. Safe to call on web (no-op) and
- * when the native module is unavailable (graceful fallback).
- * Idempotent — safe to call multiple times.
+ * Initialise push notifications: request permission, get push token,
+ * and register the device with OneSignal via a Supabase Edge Function.
+ * Safe to call on web (no-op). Idempotent.
  */
 export async function initializeNotifications(): Promise<void> {
   if (initAttempted || Platform.OS === 'web') return;
   initAttempted = true;
 
-  const appId = getOneSignalAppId();
-  if (!appId) {
-    console.warn('[Notifications] Missing EXPO_PUBLIC_ONESIGNAL_APP_ID — skipping init');
-    return;
-  }
-
   try {
-    const OneSignal = await getOneSignal();
-    if (!OneSignal) return;
-
-    OneSignal.OneSignal.Debug.setLogLevel(OneSignal.LogLevel.Warn);
-    OneSignal.OneSignal.initialize(appId);
-    notificationsInitialized = true;
-
-    // Request notification permission (deferred, non-blocking)
-    OneSignal.OneSignal.Notifications.requestPermission(true)
-      .then((granted: boolean) => {
-        console.log('[Notifications] Permission granted:', granted);
-      })
-      .catch((e: unknown) => {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.warn('[Notifications] Permission request error:', msg);
+    // Android: create a notification channel
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelGroupAsync('default', {
+        name: 'Alerta Madeira',
+        description: 'Notificações da app Alerta Madeira',
       });
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Alerta Madeira',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
 
-    // Handle notification clicks (app opened from notification)
-    OneSignal.OneSignal.Notifications.addEventListener('click', (event: unknown) => {
-      const e = event as { result?: { url?: string } };
-      console.log('[Notifications] Clicked, URL:', e?.result?.url ?? 'none');
+    // Request permission
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      console.warn('[Notifications] Permission not granted — skipping registration');
+      return;
+    }
+
+    // Get the native push token (APNs on iOS, FCM on Android)
+    const tokenResponse = await Notifications.getDevicePushTokenAsync();
+    const pushToken = tokenResponse.data;
+    if (!pushToken) {
+      console.warn('[Notifications] No push token returned');
+      return;
+    }
+
+    currentPushToken = pushToken;
+    console.log('[Notifications] Push token obtained:', pushToken.substring(0, 20) + '...');
+
+    // Register the device with OneSignal via Supabase Edge Function
+    await registerWithOneSignal(pushToken);
+
+    notificationsInitialized = true;
+    console.log('[Notifications] Initialised successfully');
+
+    // Listen for token refresh
+    Notifications.addPushTokenListener(async (newToken) => {
+      if (newToken.data && newToken.data !== currentPushToken) {
+        currentPushToken = newToken.data;
+        console.log('[Notifications] Token refreshed, re-registering');
+        await registerWithOneSignal(newToken.data);
+      }
     });
-
-    // Display notifications when app is in foreground
-    OneSignal.OneSignal.Notifications.addEventListener('foregroundWillDisplay', (event: unknown) => {
-      const e = event as {
-        preventDefault: () => void;
-        getNotification: () => { display: () => void };
-      };
-      e.preventDefault();
-      e.getNotification().display();
-    });
-
-    console.log('[Notifications] OneSignal initialized, appId:', appId);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error('[Notifications] Initialization error:', msg);
-    notificationsInitialized = false;
+    console.error('[Notifications] Init error:', msg);
   }
 }
 
 /**
- * Login the OneSignal user with the Supabase user ID.
- * This enables user-centric tracking and targeting in the OneSignal dashboard.
+ * Register (or update) a device with OneSignal via the register-device
+ * Supabase Edge Function. The edge function calls the OneSignal REST API.
+ */
+async function registerWithOneSignal(pushToken: string): Promise<void> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/register-device`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken ?? ''}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        pushToken,
+        deviceType: Platform.OS === 'ios' ? 0 : 1,
+        userId: sessionData.session?.user?.id ?? null,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.warn('[Notifications] Register-device error:', response.status, text);
+      return;
+    }
+
+    const result = await response.json();
+    console.log('[Notifications] Registered with OneSignal, player_id:', result.playerId ?? 'unknown');
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn('[Notifications] Registration failed:', msg);
+  }
+}
+
+/**
+ * Set the OneSignal external_user_id (Supabase user ID) so the user
+ * can be targeted from the OneSignal dashboard. Called on login.
  */
 export async function loginOneSignalUser(userId: string): Promise<void> {
-  if (!notificationsInitialized || Platform.OS === 'web') return;
+  if (!notificationsInitialized || !currentPushToken || Platform.OS === 'web') return;
   try {
-    const OneSignal = await getOneSignal();
-    if (!OneSignal) return;
-    OneSignal.OneSignal.login(userId);
-    console.log('[Notifications] OneSignal login:', userId);
+    await registerWithOneSignal(currentPushToken);
+    console.log('[Notifications] OneSignal user login:', userId);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     console.warn('[Notifications] Login error:', msg);
   }
 }
 
-/** Logout the OneSignal user (call on app sign-out). */
+/**
+ * Clear the OneSignal external_user_id. Called on logout.
+ */
 export async function logoutOneSignalUser(): Promise<void> {
-  if (!notificationsInitialized || Platform.OS === 'web') return;
+  if (!notificationsInitialized || !currentPushToken || Platform.OS === 'web') return;
   try {
-    const OneSignal = await getOneSignal();
-    if (!OneSignal) return;
-    OneSignal.OneSignal.logout();
-    console.log('[Notifications] OneSignal logout');
+    // Re-register without a userId to clear the external_user_id
+    const { data: sessionData } = await supabase.auth.getSession();
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/register-device`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session?.access_token ?? ''}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        pushToken: currentPushToken,
+        deviceType: Platform.OS === 'ios' ? 0 : 1,
+        userId: null,
+      }),
+    });
+    if (response.ok) {
+      console.log('[Notifications] OneSignal user logout');
+    }
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     console.warn('[Notifications] Logout error:', msg);
