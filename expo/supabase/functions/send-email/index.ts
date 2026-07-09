@@ -84,26 +84,30 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const escapedMessage = message.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     const htmlContent = `
 <!DOCTYPE html>
-<html>
+<html lang="pt">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:40px 20px;">
+<body style="margin:0;padding:0;background:#FDF2F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#FDF2F0;padding:40px 16px;">
 <tr><td align="center">
-<table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-  <tr><td style="background:linear-gradient(135deg,#B71C1C 0%,#E53935 50%,#FF5722 100%);padding:32px;text-align:center;">
-    <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,0.2);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;">
-      <span style="font-size:28px;font-weight:900;color:#fff;line-height:56px;">AM</span>
+<table width="100%" style="max-width:540px;background:#FFFFFF;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(192,57,43,0.10);">
+  <tr><td style="background:linear-gradient(135deg,#C0392B 0%,#E74C3C 60%,#E67E22 100%);padding:36px 28px;text-align:center;">
+    <div style="width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,0.18);margin:0 auto 14px;line-height:60px;">
+      <span style="font-size:26px;font-weight:900;color:#fff;letter-spacing:1px;">AM</span>
     </div>
-    <h1 style="color:#fff;margin:0;font-size:22px;font-weight:800;">Alerta Madeira</h1>
+    <h1 style="color:#fff;margin:0;font-size:21px;font-weight:800;letter-spacing:0.3px;">Alerta Madeira</h1>
+    <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:12px;font-weight:500;letter-spacing:0.5px;text-transform:uppercase;">Madeira, Portugal</p>
   </td></tr>
-  <tr><td style="padding:28px 24px;">
-    <h2 style="color:#1a1a2e;margin:0 0 12px;font-size:18px;font-weight:700;">${subject}</h2>
-    <p style="color:#444;font-size:15px;line-height:1.6;white-space:pre-wrap;">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+  <tr><td style="padding:32px 28px 8px;">
+    <h2 style="color:#1A1A2E;margin:0 0 16px;font-size:17px;font-weight:700;">${subject}</h2>
+    <p style="color:#444;font-size:14px;line-height:1.65;white-space:pre-wrap;margin:0;">${escapedMessage}</p>
   </td></tr>
-  <tr><td style="background:#F9FAFB;padding:16px 24px;border-top:1px solid #f0f0f0;text-align:center;">
-    <p style="margin:0;color:#9CA3AF;font-size:11px;">Enviado pela app Alerta Madeira - Madeira, Portugal</p>
+  <tr><td style="padding:8px 28px 28px;">
+    <div style="height:1px;background:#F0E0E0;margin:0 0 20px;"></div>
+    <p style="margin:0;color:#9CA3AF;font-size:11px;line-height:1.5;text-align:center;">Este email foi enviado através da app Alerta Madeira.<br>Madeira, Portugal &middot; alertamadeira.com</p>
   </td></tr>
 </table>
 </td></tr>
