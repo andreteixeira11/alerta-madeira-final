@@ -59,6 +59,22 @@ const config: ExpoConfig = {
       backgroundColor: '#ffffff',
     },
     package: 'alerta.madeira',
+    // Intent filters so Android can handle deep links from Supabase auth emails
+    // (password reset, email verification). Without these, clicking the email
+    // link opens a browser instead of the app.
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: false,
+        data: [
+          { scheme: 'alertamadeira' },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
+    // Firebase Cloud Messaging — required for push notifications on Android.
+    // Place google-services.json in the project root (expo/ directory).
+    googleServicesFile: './google-services.json',
   },
 
   web: {
@@ -74,6 +90,13 @@ const config: ExpoConfig = {
     ],
     'expo-font',
     'expo-web-browser',
+    [
+      'expo-notifications',
+      {
+        // No special config needed — Android uses googleServicesFile above,
+        // iOS gets push capability automatically from the plugin.
+      },
+    ],
   ],
 
   experiments: {

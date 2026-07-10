@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView,
   Platform, Alert, ActivityIndicator,
@@ -19,6 +19,32 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(verified === 'true');
+
+  // When arriving from a deep link (verified='true'), wait for Supabase to
+  // finish restoring the session from the URL before showing the form.
+  useEffect(() => {
+    if (verified !== 'true') return;
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          if (!session) {
+            // Session not ready yet — try to get it from the URL hash
+            const hash = typeof window !== 'undefined' ? window.location.hash : '';
+            if (hash?.includes('access_token')) {
+              // Already handled by _layout deep link handler, just wait
+            }
+          }
+          setIsRestoringSession(false);
+        }
+      } catch {
+        if (mounted) setIsRestoringSession(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [verified]);
 
   const handleReset = useCallback(async () => {
     if (!password.trim()) {
@@ -72,6 +98,19 @@ export default function ResetPasswordScreen() {
       setIsUpdating(false);
     }
   }, [password, confirmPassword, router]);
+
+  // Show a loading spinner while restoring session from deep link
+  if (isRestoringSession) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.centeredContent}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+        </View>
+      </View>
+    );
+  }
 
   // If the user lands here without a verified recovery session, send them back.
   if (!verified) {
@@ -288,6 +327,11 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.7,
+  },
+  loadingText: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    marginTop: 16,
   },
   resetBtnText: {
     fontSize: 16,

@@ -10,6 +10,7 @@ import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
 import { supabase } from '@/lib/supabase';
 import { t } from '@/utils/i18n';
+import * as Linking from 'expo-linking';
 
 const CODE_LENGTH = 6;
 
@@ -152,7 +153,10 @@ export default function VerifyEmailScreen() {
     setIsResending(true);
     try {
       if (verificationType === 'password_reset') {
-        const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
+        const redirectUrl = Linking.createURL('/reset-password');
+        const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+          redirectTo: redirectUrl,
+        });
         if (error) throw error;
       } else {
         const { error } = await supabase.auth.resend({

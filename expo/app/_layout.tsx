@@ -55,38 +55,99 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Process a Supabase recovery/verification deep link.
+ * Handles both fragment-based (#access_token=...) and query-based (?code=...)
+ * URL formats. Returns true if the link was handled.
+ */
+async function handleAuthDeepLink(url: string, router: ReturnType<typeof useRouter>): Promise<boolean> {
+  if (!url) return false;
+
+  console.log('[DeepLink] Processing URL:', url);
+
+  const isRecovery = url.includes('reset-password') ||
+    url.includes('type=recovery') ||
+    url.includes('type=signup') ||
+    url.includes('access_token');
+
+  if (!isRecovery) return false;
+
+  try {
+    // Extract tokens from fragment (#access_token=...&refresh_token=...) or query (?...)
+    const fragment = url.includes('#') ? url.split('#')[1] : null;
+    const query = url.includes('?') ? url.split('?')[1] : null;
+    const paramsStr = fragment || query;
+
+    if (paramsStr) {
+      const params = new URLSearchParams(paramsStr);
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (!error) {
+          console.log('[DeepLink] Session established, navigating to reset-password');
+          router.replace({ pathname: '/reset-password', params: { verified: 'true' } } as any);
+          return true;
+        }
+        console.log('[DeepLink] setSession error:', error.message);
+      }
+
+      // PKCE flow: Supabase may pass a code instead of tokens
+      const code = params.get('code');
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (!exchangeError) {
+          console.log('[DeepLink] Code exchanged, navigating to reset-password');
+          router.replace({ pathname: '/reset-password', params: { verified: 'true' } } as any);
+          return true;
+        }
+        console.log('[DeepLink] exchangeCode error:', exchangeError.message);
+      }
+    }
+  } catch (e) {
+    console.log('[DeepLink] Failed to process auth link:', e);
+  }
+
+  // If we got here but it was a recovery link, still navigate so user sees error
+  if (url.includes('reset-password') || url.includes('type=recovery')) {
+    router.replace({ pathname: '/reset-password', params: {} } as any);
+    return true;
+  }
+
+  return false;
+}
+
 function RootLayoutNav() {
   const router = useRouter();
 
-  // Listen for deep links when the app is already open (fallback: Supabase magic link)
+  // Handle cold-start deep link (app opened by clicking the email link)
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl && mounted) {
+          console.log('[DeepLink] Initial URL on cold start:', initialUrl);
+          await handleAuthDeepLink(initialUrl, router);
+        }
+      } catch (e) {
+        console.log('[DeepLink] Failed to get initial URL:', e);
+      }
+    })();
+
+    return () => { mounted = false; };
+  }, [router]);
+
+  // Listen for deep links when the app is already open
   useEffect(() => {
     const sub = Linking.addEventListener('url', async (event: { url: string }) => {
       console.log('[DeepLink] Received URL while app is open:', event.url);
-      if (event.url?.includes('reset-password') || event.url?.includes('type=recovery')) {
-        // Supabase magic link: extract fragment, establish session, then navigate.
-        try {
-          const fragment = event.url.includes('#') ? event.url.split('#')[1] : null;
-          if (fragment) {
-            const params = new URLSearchParams(fragment);
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
-            if (accessToken && refreshToken) {
-              const { error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              });
-              if (!error) {
-                router.replace({ pathname: '/reset-password', params: { verified: 'true' } } as any);
-                return;
-              }
-            }
-          }
-        } catch (e) {
-          console.log('[DeepLink] Failed to process recovery link:', e);
-        }
-        // If processing failed, still navigate so the user sees an error.
-        router.replace({ pathname: '/reset-password', params: {} } as any);
-      }
+      await handleAuthDeepLink(event.url, router);
     });
 
     return () => sub.remove();

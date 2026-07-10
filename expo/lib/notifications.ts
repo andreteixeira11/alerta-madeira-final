@@ -68,15 +68,20 @@ export async function initializeNotifications(): Promise<void> {
     }
 
     // Get the native push token (APNs on iOS, FCM on Android)
+    // Android requires google-services.json + Firebase configured in app.config.ts
+    console.log('[Notifications] Getting push token... Platform:', Platform.OS);
     const tokenResponse = await Notifications.getDevicePushTokenAsync();
     const pushToken = tokenResponse.data;
     if (!pushToken) {
-      console.warn('[Notifications] No push token returned');
+      console.warn('[Notifications] No push token returned. Response:', JSON.stringify(tokenResponse));
+      if (Platform.OS === 'android') {
+        console.warn('[Notifications] Android: Ensure google-services.json is in the project root and Firebase is configured.');
+      }
       return;
     }
 
     currentPushToken = pushToken;
-    console.log('[Notifications] Push token obtained:', pushToken.substring(0, 20) + '...');
+    console.log('[Notifications] Push token obtained:', pushToken.substring(0, 30) + '...', 'Platform:', Platform.OS);
 
     // Register the device with OneSignal via Supabase Edge Function
     await registerWithOneSignal(pushToken);
@@ -139,8 +144,24 @@ async function registerWithOneSignal(pushToken: string): Promise<void> {
  * Set the OneSignal external_user_id (Supabase user ID) so the user
  * can be targeted from the OneSignal dashboard. Called on login.
  */
+/**
+ * Set the OneSignal external_user_id (Supabase user ID) so the user
+ * can be targeted from the OneSignal dashboard. Called on login.
+ * If notifications haven't finished initializing, retry with a delay.
+ */
 export async function loginOneSignalUser(userId: string): Promise<void> {
-  if (!notificationsInitialized || !currentPushToken || Platform.OS === 'web') return;
+  if (Platform.OS === 'web') return;
+
+  // If not initialized yet, wait briefly and retry (init may still be running)
+  if (!notificationsInitialized || !currentPushToken) {
+    console.log('[Notifications] Not yet initialized, retrying login in 3s...');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    if (!notificationsInitialized || !currentPushToken) {
+      console.warn('[Notifications] Still not initialized after retry, skipping login');
+      return;
+    }
+  }
+
   try {
     await registerWithOneSignal(currentPushToken);
     console.log('[Notifications] OneSignal user login:', userId);
@@ -154,7 +175,7 @@ export async function loginOneSignalUser(userId: string): Promise<void> {
  * Clear the OneSignal external_user_id. Called on logout.
  */
 export async function logoutOneSignalUser(): Promise<void> {
-  if (!notificationsInitialized || !currentPushToken || Platform.OS === 'web') return;
+  if (!currentPushToken || Platform.OS === 'web') return;
   try {
     // Re-register without a userId to clear the external_user_id
     const { data: sessionData } = await supabase.auth.getSession();

@@ -9,6 +9,7 @@ import Colors from '@/constants/colors';
 import { translateError } from '@/utils/translateError';
 import { supabase } from '@/lib/supabase';
 import { t } from '@/utils/i18n';
+import * as Linking from 'expo-linking';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -24,8 +25,12 @@ export default function ForgotPasswordScreen() {
     setIsSending(true);
     try {
       // Supabase native: sends a 6-digit recovery code to the user's email.
-      // Works in production — no custom backend needed.
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      // redirectTo ensures the email link opens the app via deep link on both
+      // iOS (Universal Links) and Android (App Links / custom scheme).
+      const redirectUrl = Linking.createURL('/reset-password');
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: redirectUrl,
+      });
 
       if (error) {
         console.log('[ForgotPassword] Supabase reset error:', error.message);
